@@ -76,6 +76,7 @@ def save_state(st):
     tmp = STATE_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(st, f, ensure_ascii=False)
+    os.replace(tmp, STATE_FILE)          # ← 누락됐던 최종 교체 — 이제 계좌가 파일로 확정 저장됨
 
 
 def log_trade(side, code, qty, px, reason, pnl=None):
@@ -183,10 +184,21 @@ def mom(c):
 
 def run_cycle(st, prices, top_n=4, rebal_min=60, stop=-0.08, take=0.08, trail=0.05):
     now = time.time()
-    # 오늘 봉 갱신 + 날짜 바뀜 처리(간단히: 매 시세 사이클을 오늘 봉으로 덮어씀)
+    # 날짜가 바뀌면 새 일봉을 이어붙이고(무기한 실행 대응), 같은 날엔 오늘 봉만 갱신
+    today = ny_today()
+    new_day = bool(today) and st.get("last_bar_date", "") != today
     for c, px in prices.items():
-        if c in st["day_closes"] and px > 0:
-            st["day_closes"][c][-1] = px
+        arr = st["day_closes"].get(c)
+        if not arr or px <= 0:
+            continue
+        if new_day:
+            arr.append(px)
+            if len(arr) > 200:
+                arr.pop(0)
+        else:
+            arr[-1] = px
+    if today:
+        st["last_bar_date"] = today
 
     codes = list(st["day_closes"])
     closes = st["day_closes"]
@@ -311,6 +323,15 @@ def ranked(st, prices, top_n):
 
 
 # ───────────────────────── 장중 확인 & 루프 ─────────────────────────
+def ny_today():
+    try:
+        if ZoneInfo is None:
+            return ""
+        return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
 def market_open_now():
     try:
         if ZoneInfo is None:
