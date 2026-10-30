@@ -274,7 +274,19 @@ async function saveCfg(){
   catch (e) { msg("실패: " + e.message); }
 }
 function ghUrl(){ return "https://github.com/" + OWNER + "/" + REPO + "/actions/workflows/bot.yml"; }
-function runNow(){ location.href = ghUrl(); }
+function runNow(){
+  var t = localStorage.getItem("gh_pat");
+  if (!t){ msg("토큰을 먼저 저장하거나, [⚙ 시작·정지·실행] 폼을 사용하세요"); return; }
+  msg("실행 요청 중…");
+  fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/actions/workflows/bot.yml/dispatches",
+    { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, hdr()),
+      body: JSON.stringify({ ref: "main" }) })
+  .then(function(r){
+    if (r.status === 204) msg("실행 요청 완료 — 1~2분 뒤 자동 반영됩니다");
+    else if (r.status === 403) msg("토큰에 Actions 권한 추가 필요 — 깃허브 토큰 화면에서 Edit → Actions: Read and write. 그동안은 [⚙] 폼으로 가능");
+    else msg(emsg(r.status));
+  }).catch(function(){ msg("네트워크 오류 — 잠시 후 다시 시도"); });
+}
 function saveTok(){ localStorage.setItem("gh_pat", document.getElementById("tok").value.trim()); tokStat(); msg("토큰 저장 완료"); }
 function tokStat(){ var t = localStorage.getItem("gh_pat");
   document.getElementById("tokstat").textContent = t
@@ -331,26 +343,53 @@ function fetchChunk(chunk){
     })();
   });
 }
-function liveTick(){
-  Promise.all(chunks(CODES, 4).map(fetchChunk)).then(function(rs){
-    var got = {}, n = 0;
-    rs.forEach(function(o){ if (o){ for (var k in o){ got[k] = o[k]; n++; } } });
-    if (!n){ document.getElementById("livestat").textContent = "실시간 연결 실패 — 마지막 봇 실행 값 표시"; return; }
-    document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + n + "종목) · 60초 갱신";
-    var eq = CASH;
-    for (var c in QTY){
-      var p = got[c] || LASTP[c] || 0;
-      if (p) eq += QTY[c] * p;
-      var e1 = document.getElementById("px_" + c), e2 = document.getElementById("pl_" + c);
-      if (e1 && p) e1.textContent = p.toFixed(2);
-      if (e2 && p && AVG[c]){
-        var r = (p / AVG[c] - 1) * 100;
-        e2.textContent = (r >= 0 ? "▲ +" : "▼ ") + r.toFixed(1) + "%";
-        e2.style.color = r >= 0 ? "#2FBF71" : "#E5484D";
-      }
+function applyVals(got, src){
+  var eq = CASH, used = 0;
+  for (var c in QTY){
+    var p = got[c] || LASTP[c] || 0;
+    if (got[c]) used++;
+    if (p) eq += QTY[c] * p;
+    var e1 = document.getElementById("px_" + c), e2 = document.getElementById("pl_" + c);
+    if (e1 && p) e1.textContent = p.toFixed(2);
+    if (e2 && p && AVG[c]){
+      var r = (p / AVG[c] - 1) * 100;
+      e2.textContent = (r >= 0 ? "▲ +" : "▼ ") + r.toFixed(1) + "%";
+      e2.style.color = r >= 0 ? "#2FBF71" : "#E5484D";
     }
-    var big = document.getElementById("bignum");
-    if (big) big.textContent = "$" + Math.round(eq).toLocaleString("en-US");
+  }
+  var big = document.getElementById("bignum");
+  if (big) big.textContent = "$" + Math.round(eq).toLocaleString("en-US");
+  return used;
+}
+function botQ(){
+  if (!REPO) return Promise.resolve(null);
+  return fetch("https://raw.githubusercontent.com/" + OWNER + "/" + REPO + "/main/work/quotes.json?_=" + Date.now())
+    .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+}
+function agoMin(iso){
+  var d = new Date(iso.replace(" ", "T") + (iso.indexOf("Z") >= 0 ? "" : "Z"));
+  return isNaN(d) ? "?" : Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+}
+function liveTick(){
+  Promise.all([
+    Promise.all(chunks(CODES, 4).map(fetchChunk)).then(function(rs){
+      var got = {}, n = 0;
+      rs.forEach(function(o){ if (o){ for (var k in o){ got[k] = o[k]; n++; } } });
+      return { got: got, n: n };
+    }),
+    botQ()
+  ]).then(function(res){
+    var live = res[0], bq = res[1];
+    if (live.n){
+      applyVals(live.got);
+      document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + live.n + "종목) · 60초 갱신";
+    } else if (bq && bq.prices){
+      applyVals(bq.prices);
+      document.getElementById("livestat").innerHTML =
+        "● 봇 최신 시세 — " + agoMin(bq.time) + "분 전 갱신 (10분 주기) <span class='k'>| 실시간 경로 재시도중</span>";
+    } else {
+      document.getElementById("livestat").textContent = "연결 대기중 — 다음 갱신에서 재시도합니다";
+    }
   }).catch(function(){});
 }
 liveTick(); setInterval(liveTick, 60000);
