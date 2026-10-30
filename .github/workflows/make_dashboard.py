@@ -105,7 +105,8 @@ for r in load(os.path.join(HERE, "trades.csv"), "").strip().splitlines()[-15:][:
     f = list(csv.reader([r]))[0] if r else []
     if len(f) >= 6 and f[0] != "시각":
         pnl = f[6] if len(f) > 6 and f[6] else ""
-        col = " style='color:#2FBF71'" if pnl.startswith("-") is False and pnl else ""
+        col = (" style='color:#2FBF71'" if pnl and not pnl.startswith("-")
+               else (" style='color:#E5484D'" if pnl.startswith("-") else ""))
         rows_tr += (f"<tr><td>{esc(f[0][-8:])}</td><td>{esc(f[1])}</td><td>{esc(f[2])} {esc(NAME.get(f[2], f[2]))}</td>"
                     f"<td>{esc(f[4])}</td><td>{esc(f[5])}</td><td{col}>{esc(pnl) or '—'}</td></tr>")
 rows_tr = rows_tr or "<tr><td colspan='6'>아직 기록 없음 — 장 시작 후 첫 리밸런스에서 매수</td></tr>"
@@ -137,8 +138,9 @@ for i, (c, v) in enumerate(rk):
     held = c in st["pos"]
     w = min(abs(v) / mx * 100, 100) if v is not None else 0
     col = ("#4A5568" if v is None else ("#F5B942" if held else ("#2FBF71" if v >= 0 else "#E5484D")))
+    held_mark = ' <b style="color:#F5B942">●</b>' if held else ''
     rk_html += (f"<div class='rk{' held' if held else ''}'><span class='rn'>{i+1}</span>"
-                f"<span class='rc'>{esc(NAME.get(c, c))}{' <b style=\"color:#F5B942\">●</b>' if held else ''}</span>"
+                f"<span class='rc'>{esc(NAME.get(c, c))}{held_mark}</span>"
                 f"<span class='rb'><i style='width:{w:.0f}%;background:{col}'></i></span>"
                 f"<span class='rv' style='color:{col}'>{fnum(v)}</span></div>")
 RANK = f"<div class='card'>{rk_html}<div class='k' style='margin-top:6px'>노란 막대 = 현재 보유 · 점수 = 개별 모멘텀 60% + 섹터 열기 40%</div></div>"
@@ -160,7 +162,8 @@ for s in order:
     v = secv[s]
     held = any(SEC.get(c) == s for c in st["pos"])
     col = "#4A5568" if v is None else ("#2FBF71" if v >= 0 else "#E5484D")
-    sc += (f"<div class='sc{' hsec' if held else ''}'><div class='sn'>{esc(s)}{' <b style=\"color:#F5B942\">보유중</b>' if held else ''}</div>"
+    held_s = ' <b style="color:#F5B942">보유중</b>' if held else ''
+    sc += (f"<div class='sc{' hsec' if held else ''}'><div class='sn'>{esc(s)}{held_s}</div>"
            f"<div class='sv' style='color:{col}'>{fnum(v)}</div></div>")
 SECTORS = f"<div class='card'><div class='k'>최강 섹터: <b style='color:#F5B942'>{esc(best or '—')}</b></div><div class='cards' style='margin-top:6px'>{sc}</div></div>"
 
