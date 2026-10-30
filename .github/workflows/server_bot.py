@@ -93,7 +93,7 @@ def log_trade(side, code, qty, px, reason, pnl=None):
           + (f" ({pnl:+,.0f}$)" if pnl is not None else ""))
 
 
-# ───────────────────────── 시세 (Finnhub) ─────────────────────────
+# ───────────────────────── 시세 (Alpaca 전용 — 야후 제거) ─────────────────────────
 def fetch_json(url):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=15) as r:
@@ -119,54 +119,21 @@ def fetch_prices_alpaca(codes, key_id, secret):
     return out
 
 
-def fetch_prices_yahoo(codes):
-    url = ("https://query1.finance.yahoo.com/v8/finance/spark?symbols="
-           + urllib.parse.quote(",".join(codes)) + "&range=1d&interval=5m&_="
-           + str(int(time.time() * 1000)))
-    j = fetch_json(url)
-    out = {}
-    for r0 in (j.get("spark", {}).get("result") or []):
-        resp = (r0.get("response") or [None])[0]
-        meta = resp and resp.get("meta")
-        if meta and isinstance(meta.get("regularMarketPrice"), (int, float)):
-            out[meta["symbol"].upper()] = float(meta["regularMarketPrice"])
-    return out
-
-
 def get_prices(codes, a):
-    """Alpaca(실시간, 기본) → 야후(대체) → Finnhub(키가 있으면 빈 종목 보강)"""
+    """Alpaca 전용 (야후 제거) — 실패 시 1회 재시도"""
     out = {}
-    if a.alpaca_id and a.alpaca_sec:
+    if not (a.alpaca_id and a.alpaca_sec):
+        print("[시세] Alpaca 키 없음 — 저장소 Settings → Secrets 확인 필요")
+        return out
+    for attempt in (1, 2):
         try:
             out = fetch_prices_alpaca(codes, a.alpaca_id, a.alpaca_sec)
             print(f"[시세] Alpaca {len(out)}종목 수신")
+            return out
         except Exception as e:
-            print(f"[시세] Alpaca 실패 — 야후로 대체: {e}")
-    if not out:
-        try:
-            out = fetch_prices_yahoo(codes)
-            print(f"[시세] 야후 {len(out)}종목 수신")
-        except Exception as e:
-            print(f"[시세] 야후 실패: {e}")
-    if a.key and len(out) < len(codes):
-        fb = fetch_prices(codes, a.key)
-        for c in fb:
-            out.setdefault(c, fb[c])
-    return out
-
-
-def fetch_prices(codes, key):
-    out = {}
-    for i in range(0, len(codes), 8):                 # 분당 60회 한도 → 여유 있게
-        chunk = codes[i:i+8]
-        for c in chunk:
-            try:
-                j = fetch_json(f"https://finnhub.io/api/v1/quote?symbol={c}&token={key}")
-                if isinstance(j, dict) and isinstance(j.get("c"), (int, float)) and j["c"] > 0:
-                    out[c] = float(j["c"])
-            except (urllib.error.URLError, urllib.error.HTTPError, ValueError) as e:
-                print(f"[시세] {c} 조회 실패: {e}")
-        time.sleep(1)
+            print(f"[시세] Alpaca 실패 ({attempt}/2): {e}")
+            time.sleep(2)
+    print("[시세] 시세 수신 실패 — 이 사이클은 건너뜀")
     return out
 
 
