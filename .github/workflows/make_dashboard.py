@@ -311,7 +311,7 @@ setInterval(function(){ document.getElementById("clk").textContent =
 
 now = datetime.now().strftime("%m-%d %H:%M UTC")
 STATUS = ("<div class='k'>봇이 지금 보고 있는 것: " +
-          ("장중 — 실시간 매매 진행" if MKT_OPEN else "장 마감 — 다음 개장(서울 밤 11:30~12:30) 후 자동 재개") +
+          ("장중 — 실시간 매매 진행" if MKT_OPEN else "장 마감 — 월~금 서울 밤 11:30 개장. 그때 Actions에서 Run workflow를 누르면 장 마감까지 자동 운영됩니다") +
           " · 마지막 실행 " + now + "</div>")
 
 LIVE_JS = """
@@ -347,13 +347,24 @@ function setP(c, p){
   var big = document.getElementById("bignum");
   if (big) big.textContent = "$" + Math.round(eq).toLocaleString("en-US");
 }
+function nyMkt(){
+  try{
+    var p = new Date().toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",hour:"numeric",minute:"numeric",hourCycle:"h23"}).split(", ");
+    var d = {Sun:7,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[p[0]];
+    var t = p[1].split(":");
+    var m = d*1440 + (+t[0])*60 + (+t[1]);
+    return m >= 1440+570 && m < 5*1440+960;
+  }catch(e){ return true; }
+}
 function tick(){
   botQ().then(function(bq){
     if (bq && bq.prices){
       var m = agoMin(bq.time);
       if (!liveOK) for (var c in bq.prices) setP(c, bq.prices[c]);
-      document.getElementById("livestat").innerHTML = "● 봇 시세 — " + m + "분 전" +
-        (m >= 15 ? " <span class='k'>(봇이 아직 안 뛰었습니다 — Actions 탭에서 Run workflow를 눌러 주세요)</span>" : "");
+      var s = document.getElementById("livestat");
+      if (!nyMkt()) s.innerHTML = "● 봇 시세 — " + m + "분 전 <span class='k'>| 주말·야간 — 시장이 닫혀 있습니다 (월~금 서울 밤 11:30 개장)</span>";
+      else if (m >= 15) s.innerHTML = "● 봇 시세 — " + m + "분 전 <span class='k'>(봇이 안 뛰고 있습니다 — Actions 탭에서 Run workflow를 눌러 주세요)</span>";
+      else s.innerHTML = "● 봇 시세 — " + m + "분 전";
     }
   });
 }
