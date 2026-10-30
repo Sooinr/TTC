@@ -20,26 +20,25 @@ jobs:
         with:
           python-version: "3.11"
 
-      # 봇 파일이 어느 폴더에 있든 자동으로 찾아서 실행 (폴더째 업로드해도 동작)
-      - name: 봇 위치 찾기
+      # 봇이 어느 폴더에 있든 찾아서, 깃허브가 건드릴 수 없는 .github 폴더 밖의
+      # 별도 work/ 폴더로 복사해 실행 — 계좌·기록 파일도 거기에 생깁니다
+      - name: 봇 위치 찾기·복사
         run: |
-          DIR=$(dirname "$(find . -name server_bot.py -not -path './.git/*' | head -1)")
-          if [ -z "$DIR" ] || [ "$DIR" = "." ]; then
-            if [ ! -f ./server_bot.py ]; then
-              echo "::error::server_bot.py가 저장소 어디에도 없습니다. Code 탭 → Add file → Upload files 로 키트 파일들을 업로드해 주세요."
-              exit 1
-            fi
-            DIR="."
-          fi
-          if [ ! -f "$DIR/universe_us.json" ]; then
-            echo "::error::$DIR 에 universe_us.json이 없습니다. server_bot.py와 같은 폴더에 함께 업로드해 주세요."
+          SRC=$(dirname "$(find . -name server_bot.py -not -path './.git/*' | head -1)")
+          if [ ! -f "$SRC/server_bot.py" ]; then
+            echo "::error::server_bot.py가 저장소에 없습니다. Code 탭 → Add file → Upload files 로 키트 파일을 업로드해 주세요."
             exit 1
           fi
-          echo "BOT_DIR=$DIR" >> "$GITHUB_ENV"
-          echo "봇 폴더: $DIR"
+          if [ ! -f "$SRC/universe_us.json" ]; then
+            echo "::error::$SRC 에 universe_us.json이 없습니다. server_bot.py와 같은 폴더에 함께 넣어 주세요."
+            exit 1
+          fi
+          mkdir -p work
+          cp "$SRC/server_bot.py" "$SRC/universe_us.json" work/
+          echo "봇 폴더: $SRC → work/ 에서 실행합니다"
 
       - name: 봇 1회 실행 (추가 설치 없음 — 표준 라이브러리만 사용)
-        run: python3 "$BOT_DIR/server_bot.py" --once
+        run: cd work && python3 server_bot.py --once
         env:
           ALPACA_ID: ${{ secrets.ALPACA_ID }}
           ALPACA_SEC: ${{ secrets.ALPACA_SEC }}
@@ -48,7 +47,8 @@ jobs:
         run: |
           git config user.name "rotation-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add -A
+          git add work/state.json 2>/dev/null || true
+          git add work/trades.csv 2>/dev/null || true
           if ! git diff --cached --quiet; then
             git commit -m "매매 기록 갱신"
             git push
