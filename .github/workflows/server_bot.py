@@ -38,6 +38,7 @@ import urllib.error
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(HERE, "state.json")
 TRADES_CSV = os.path.join(HERE, "trades.csv")
+QUOTES_FILE = os.path.join(HERE, "quotes.json")
 UNIVERSE_FILE = os.path.join(HERE, "universe_us.json")
 
 SECTOR_OF = {
@@ -182,6 +183,15 @@ def mom(c):
     return 0.5 * (c[-1] / c[-20] - 1) + 0.5 * (c[-1] / c[-60] - 1)
 
 
+def save_quotes(prices):
+    try:
+        with open(QUOTES_FILE, "w", encoding="utf-8") as f:
+            json.dump({"time": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       "prices": {c: round(p, 4) for c, p in prices.items()}}, f, ensure_ascii=False)
+    except OSError as e:
+        print(f"[시세 저장] 실패: {e}")
+
+
 def run_cycle(st, prices, top_n=4, rebal_min=60, stop=-0.08, take=0.08, trail=0.05):
     now = time.time()
     # 날짜가 바뀌면 새 일봉을 이어붙이고(무기한 실행 대응), 같은 날엔 오늘 봉만 갱신
@@ -236,6 +246,7 @@ def run_cycle(st, prices, top_n=4, rebal_min=60, stop=-0.08, take=0.08, trail=0.
     eh.append([int(now), round(equity(st, prices))])
     del eh[:-240]                      # 자산 곡선용 — 최근 240틱만 유지
     save_state(st)
+    save_quotes(prices)                # 대시보드 실시간 표시용 최신 시세
 
 
 def equity(st, prices):
