@@ -323,34 +323,6 @@ var LASTP = __LASTP__;
 var PR = {};
 for (var k in LASTP) PR[k] = LASTP[k];
 var liveOK = false, wsAlp = null;
-var PRX = [
-  { mk:function(u){ return u; }, parse:function(t){ return JSON.parse(t); } },
-  { mk:function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); }, parse:function(t){ return JSON.parse(t); } },
-  { mk:function(u){ return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }, parse:function(t){ return JSON.parse(t); } },
-  { mk:function(u){ return "https://api.allorigins.win/get?url=" + encodeURIComponent(u); }, parse:function(t){ return JSON.parse(JSON.parse(t).contents); } }
-];
-function chunks(a, n){ var o = []; for (var i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; }
-function fetchChunk(chunk){
-  var y = "https://query1.finance.yahoo.com/v8/finance/spark?symbols=" + chunk.join(",") +
-          "&range=1d&interval=5m&_=" + Date.now();
-  return new Promise(function(res){
-    var i = 0;
-    (function attempt(){
-      if (i >= PRX.length){ res(null); return; }
-      fetch(PRX[i].mk(y)).then(function(r){ return r.ok ? r.text() : Promise.reject(); })
-        .then(function(txt){
-          var j = PRX[i].parse(txt);
-          var root = j.spark && j.spark.result ? j.spark.result : [];
-          var out = {};
-          root.forEach(function(rr){
-            var m = rr.response && rr.response[0] && rr.response[0].meta;
-            if (m && typeof m.regularMarketPrice === "number") out[m.symbol] = m.regularMarketPrice;
-          });
-          res(out);
-        }).catch(function(){ i++; attempt(); });
-    })();
-  });
-}
 function botQ(){
   if (!REPO) return Promise.resolve(null);
   return fetch("https://raw.githubusercontent.com/" + OWNER + "/" + REPO + "/main/work/quotes.json?_=" + Date.now())
@@ -378,16 +350,11 @@ function setP(c, p){
 function tick(){
   botQ().then(function(bq){
     if (bq && bq.prices){
+      var m = agoMin(bq.time);
       if (!liveOK) for (var c in bq.prices) setP(c, bq.prices[c]);
-      document.getElementById("livestat").innerHTML = "● 봇 시세 — " + agoMin(bq.time) +
-        "분 전 <span class='k'>| 실시간 " + (liveOK ? "사용중" : "경로 탐색중") + "</span>";
+      document.getElementById("livestat").innerHTML = "● 봇 시세 — " + m + "분 전" +
+        (m >= 15 ? " <span class='k'>(봇이 아직 안 뛰었습니다 — Actions 탭에서 Run workflow를 눌러 주세요)</span>" : "");
     }
-  });
-  Promise.all(chunks(CODES, 4).map(fetchChunk)).then(function(rs){
-    var got = {}, n = 0;
-    rs.forEach(function(o){ if (o){ for (var k in o){ got[k] = o[k]; n++; } } });
-    if (n){ liveOK = true; for (var c in got) setP(c, got[c]);
-      document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + n + "종목) · 30초 갱신"; }
   });
 }
 function alpStream(){
