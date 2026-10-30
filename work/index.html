@@ -13,13 +13,13 @@ td,th{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left}
 .in{background:#1D2530;color:#E9EDF3;border:1px solid #29323E;border-radius:6px;padding:4px 6px}
 .bt{color:#fff;border:0;border-radius:7px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px}</style><div class="wrap">
 <h2 style="margin-top:0">로테이션 봇 대시보드</h2>
-<div class="k">마지막 실행: 2026-10-30 03:03 UTC · 20분마다 자동 실행 · 미국 정규장(뉴욕 09:30~16:00)에만 매매 · <a href="#" onclick="location.reload();return false" style="color:#7FB2F0">새로고침</a></div>
+<div class="k">마지막 실행: 2026-10-30 03:24 UTC · 20분마다 자동 실행 · 미국 정규장(뉴욕 09:30~16:00)에만 매매 · <a href="#" onclick="location.reload();return false" style="color:#7FB2F0">새로고침</a></div>
 <div class="big">$10,000,000</div><div class="k">수익률 +0.0% · 시작자본 $10,000,000</div>
 <div class="cards"><div class='kpi'><div class='k'>현금</div><div class='kv'>$10,000,000</div></div><div class='kpi'><div class='k'>투자중</div><div class='kv'>0%</div></div><div class='kpi'><div class='k'>평가손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>실현손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>리밸런스</div><div class='kv'>0회</div></div><div class='kpi'><div class='k'>매매</div><div class='kv'>0건</div></div><div class='kpi'><div class='k'>승률</div><div class='kv'>0%</div></div></div>
 
 <div class="card" id="ctrl">
  <h3 style="margin:0 0 6px;font-size:13px;color:#F5B942">제어 패널</h3>
- <div id="badge" style="font-size:14px;font-weight:700;color:#2FBF71">봇 상태: 실행중 <span class="k">(페이지를 연 시점 기준 · 아래 버튼으로 변경)</span></div>
+ <div id="badge" style="font-size:14px;font-weight:700;color:#E5484D">봇 상태: 정지됨 <span class="k">(페이지를 연 시점 기준 · 아래 버튼으로 변경)</span></div>
  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
   <button onclick="setEn(true)"  class="bt" style="background:#2FBF71">▶ 시작</button>
   <button onclick="setEn(false)" class="bt" style="background:#E5484D">■ 정지</button>
@@ -67,6 +67,13 @@ async function putCfg(cfg, sha){
     body: JSON.stringify({ message: "대시보드에서 설정 변경", content: b64e(JSON.stringify(cfg, null, 2)), sha: sha, branch: "main" }) });
   if (!r.ok) throw new Error(r.status === 403 ? "권한 없음 — 토큰의 Contents 권한 확인" : "HTTP " + r.status);
 }
+async function updateCfg(mut){
+  for (var i = 0; i < 3; i++){
+    var g = await getCfg();
+    try { var next = mut(g.cfg); await putCfg(next, g.sha); return next; }
+    catch (e) { if (String(e.message).indexOf("409") < 0) throw e; }
+  }
+}
 function fromInputs(){
   return { enabled: null, top_n: +document.getElementById("c_top").value,
            rebal_min: +document.getElementById("c_rebal").value,
@@ -82,13 +89,13 @@ function fill(c){
   if (c.trail != null) document.getElementById("c_trail").value = Math.round(c.trail * 100);
 }
 async function setEn(on){
-  try { var g = await getCfg(); g.cfg.enabled = on; await putCfg(g.cfg, g.sha);
+  try { await updateCfg(function(c){ c.enabled = on; return c; });
         badge(on); msg(on ? "시작 요청 완료 — 다음 실행부터 매매 재개" : "정지 요청 완료 — 다음 실행부터 매매 안 함"); }
   catch (e) { msg("실패: " + e.message); }
 }
 async function saveCfg(){
-  try { var g = await getCfg(); var c = fromInputs(); c.enabled = g.cfg.enabled !== false;
-        await putCfg(c, g.sha); fill(c); msg("설정 저장 완료 — 다음 실행부터 적용"); }
+  try { var c = await updateCfg(function(c0){ var n = fromInputs(); n.enabled = c0.enabled !== false; return n; });
+        fill(c); msg("설정 저장 완료 — 다음 실행부터 적용"); }
   catch (e) { msg("실패: " + e.message); }
 }
 async function runNow(){
