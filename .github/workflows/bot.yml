@@ -1,9 +1,9 @@
 name: rotation-bot
 
-# 20분마다 자동 실행 + Run workflow 폼에서 시작/정지·설정 (개인 토큰 불필요)
+# 장중에 한 번 시작하면 장 마감까지 자동 운영 + Run workflow 폼에서 시작/정지·설정 (개인 토큰 불필요)
 on:
   schedule:
-    - cron: "*/1 * * * *"           # 1분마다 — 공개 저장소는 실행 시간 무제한 무료 (깃허브 상황에 따라 수분 지연 가능)
+    - cron: "*/1 * * * *"           # 보조일 뿐 — 최근 깃허브가 예약 실행을 자주 누락. 실제 운전은 아래 루프 담당
   workflow_dispatch:
     inputs:
       enabled:
@@ -49,7 +49,7 @@ concurrency:
 jobs:
   bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 330
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -110,12 +110,30 @@ jobs:
           I_TAKE: ${{ github.event.inputs.take_pct }}
           I_TRAIL: ${{ github.event.inputs.trail_pct }}
 
-      - name: 봇 루프 실행 (1분 간격 2사이클 — 시세·감시를 1분대로 유지)
+      - name: 봇 루프 실행 (장 마감까지 1분 간격 — 매 사이클 시세·기록 즉시 커밋)
         run: |
           cd work
-          for i in 1 2; do
-            python3 server_bot.py --once || echo "[경고] 사이클 비정상 종료 — 기록·페이지 발행은 계속 진행"
-            if [ $i -lt 2 ]; then sleep 55; fi
+          git config user.name "rotation-bot"
+          git config user.email "actions@users.noreply.github.com"
+          START=$(date +%s)
+          while :; do
+            python3 server_bot.py --once || echo "[경고] 사이클 비정상 종료 — 다음 사이클에서 재시도"
+            python3 make_dashboard.py || true
+            cd ..
+            for f in state.json trades.csv settings.json quotes.json index.html; do
+              git add "work/$f" 2>/dev/null || true
+            done
+            if ! git diff --cached --quiet; then
+              git commit -m "매매 기록·갱신" || true
+              git push || (git pull --rebase origin main 2>/dev/null || true; git push || true)
+            fi
+            cd work
+            EN=$(python3 -c "import json;print(json.load(open('settings.json')).get('enabled', True))" 2>/dev/null || echo True)
+            D=$(TZ=America/New_York date +%u); H=$(TZ=America/New_York date +%H%M)
+            if [ "$EN" = "False" ]; then echo "[종료] 대시보드에서 정지 선택됨"; break; fi
+            if [ "$D" -ge 6 ] || [ "$H" -ge 1600 ]; then echo "[종료] 미국 장 마감 — 다음 거래일에 다시 시작해 주세요"; break; fi
+            if [ $(( $(date +%s) - START )) -gt 18600 ]; then echo "[종료] 최대 실행 시간 도달"; break; fi
+            sleep 55
           done
         env:
           ALPACA_ID: ${{ secrets.ALPACA_ID }}
