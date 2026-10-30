@@ -1,18 +1,27 @@
 name: rotation-bot
 
-# 20분마다 자동 실행 (미국 정규장에만 실제 매매 — 봇이 장중을 판단)
+# 20분마다 자동 실행 → 대시보드(index.html) 재생성 → 웹페이지에 반영
 on:
   schedule:
     - cron: "*/20 * * * *"
   workflow_dispatch:          # Actions 탭의 Run workflow 버튼으로 수동 실행도 가능
 
 permissions:
-  contents: write             # 계좌·매매 기록을 저장소에 커밋해 두기 위함
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   bot:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -20,8 +29,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      # 봇이 어느 폴더에 있든 찾아서, 깃허브가 건드릴 수 없는 .github 폴더 밖의
-      # 별도 work/ 폴더로 복사해 실행 — 계좌·기록 파일도 거기에 생깁니다
+      # 봇 파일을 어느 폴더에 올리든 자동으로 찾아 별도 work/ 폴더에서 실행
       - name: 봇 위치 찾기·복사
         run: |
           SRC=$(dirname "$(find . -name server_bot.py -not -path './.git/*' | head -1)")
@@ -29,27 +37,41 @@ jobs:
             echo "::error::server_bot.py가 저장소에 없습니다. Code 탭 → Add file → Upload files 로 키트 파일을 업로드해 주세요."
             exit 1
           fi
-          if [ ! -f "$SRC/universe_us.json" ]; then
-            echo "::error::$SRC 에 universe_us.json이 없습니다. server_bot.py와 같은 폴더에 함께 넣어 주세요."
-            exit 1
-          fi
+          for f in universe_us.json make_dashboard.py; do
+            if [ ! -f "$SRC/$f" ]; then
+              echo "::error::$SRC 에 $f 없음 — server_bot.py와 같은 폴더에 함께 업로드해 주세요."
+              exit 1
+            fi
+          done
           mkdir -p work
-          cp "$SRC/server_bot.py" "$SRC/universe_us.json" work/
+          cp "$SRC/server_bot.py" "$SRC/universe_us.json" "$SRC/make_dashboard.py" work/
           echo "봇 폴더: $SRC → work/ 에서 실행합니다"
 
-      - name: 봇 1회 실행 (추가 설치 없음 — 표준 라이브러리만 사용)
+      - name: 봇 1회 실행 (표준 라이브러리만 사용)
         run: cd work && python3 server_bot.py --once
         env:
           ALPACA_ID: ${{ secrets.ALPACA_ID }}
           ALPACA_SEC: ${{ secrets.ALPACA_SEC }}
 
-      - name: 계좌 상태·매매 기록 저장(커밋)
+      - name: 웹 대시보드 생성
+        run: cd work && python3 make_dashboard.py
+
+      - name: 계좌·기록을 저장소에 저장
         run: |
           git config user.name "rotation-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add work/state.json 2>/dev/null || true
-          git add work/trades.csv 2>/dev/null || true
+          git add work/state.json work/trades.csv 2>/dev/null || true
+          git add work/index.html
           if ! git diff --cached --quiet; then
-            git commit -m "매매 기록 갱신"
+            git commit -m "매매 기록·대시보드 갱신"
             git push
           fi
+
+      - name: 웹페이지 발행 (GitHub Pages)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: work
+
+      - name: 배포
+        id: deployment
+        uses: actions/deploy-pages@v4
