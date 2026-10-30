@@ -200,13 +200,18 @@ CONTROL = """
   <button onclick="runNow()" class="bt" style="background:#3E76D6">지금 리밸런스</button>
   <a id="ghlink" class="bt" style="background:#29323E;text-decoration:none" href="#">⚙ 시작·정지·실행 (토큰 불필요)</a>
  </div>
+ <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12px">
+  <input id="alp_id" class="in" placeholder="Alpaca Key ID (페이지 초단위 실시간용·선택)" style="width:210px">
+  <input id="alp_page_sec" type="password" class="in" placeholder="Alpaca Secret" style="width:150px">
+  <button onclick="saveAlp()" class="bt" style="background:#29323E">실시간 연결</button>
+ </div>
  <div style="margin-top:6px;font-size:12px">
   <input id="tok" class="in" style="width:100%;max-width:260px" placeholder="GitHub 토큰">
   <button onclick="saveTok()" class="bt" style="background:#29323E">토큰 저장</button>
  </div>
  <div id="msg" style="margin-top:6px;font-size:12px;color:#F5B942"></div>
  <div id="tokstat" class="k" style="margin-top:4px"></div>
- <div class="k" style="margin-top:6px">변경은 <b>다음 실행(≤20분)부터 적용</b> · 버튼 없이도 [⚙ 시작·정지·실행] 화면의 선택지(봇 상태·종목 수·주기)로 제어 가능 — 토큰은 여기서 바로 누를 때만 필요</div>
+ <div class="k" style="margin-top:6px">변경은 <b>다음 실행(≤20분)부터 적용</b> · 버튼 없이도 [⚙ 시작·정지·실행] 화면의 선택지(봇 상태·종목 수·주기)로 제어 가능 — 토큰은 여기서 바로 누를 때만 필요 · Alpaca 키는 이 브라우저에만 저장(서버 미전송), 넣으면 초단위 실시간</div>
 </div>
 <script>
 var OWNER = location.hostname.split(".")[0], REPO = (location.pathname.split("/")[1] || "");
@@ -315,6 +320,9 @@ var QTY = __QTY__;
 var AVG = __AVG__;
 var CASH = __CASH__;
 var LASTP = __LASTP__;
+var PR = {};
+for (var k in LASTP) PR[k] = LASTP[k];
+var liveOK = false, wsAlp = null;
 var PRX = [
   { mk:function(u){ return u; }, parse:function(t){ return JSON.parse(t); } },
   { mk:function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); }, parse:function(t){ return JSON.parse(t); } },
@@ -343,24 +351,6 @@ function fetchChunk(chunk){
     })();
   });
 }
-function applyVals(got, src){
-  var eq = CASH, used = 0;
-  for (var c in QTY){
-    var p = got[c] || LASTP[c] || 0;
-    if (got[c]) used++;
-    if (p) eq += QTY[c] * p;
-    var e1 = document.getElementById("px_" + c), e2 = document.getElementById("pl_" + c);
-    if (e1 && p) e1.textContent = p.toFixed(2);
-    if (e2 && p && AVG[c]){
-      var r = (p / AVG[c] - 1) * 100;
-      e2.textContent = (r >= 0 ? "▲ +" : "▼ ") + r.toFixed(1) + "%";
-      e2.style.color = r >= 0 ? "#2FBF71" : "#E5484D";
-    }
-  }
-  var big = document.getElementById("bignum");
-  if (big) big.textContent = "$" + Math.round(eq).toLocaleString("en-US");
-  return used;
-}
 function botQ(){
   if (!REPO) return Promise.resolve(null);
   return fetch("https://raw.githubusercontent.com/" + OWNER + "/" + REPO + "/main/work/quotes.json?_=" + Date.now())
@@ -370,29 +360,63 @@ function agoMin(iso){
   var d = new Date(iso.replace(" ", "T") + (iso.indexOf("Z") >= 0 ? "" : "Z"));
   return isNaN(d) ? "?" : Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
 }
-function liveTick(){
-  Promise.all([
-    Promise.all(chunks(CODES, 4).map(fetchChunk)).then(function(rs){
-      var got = {}, n = 0;
-      rs.forEach(function(o){ if (o){ for (var k in o){ got[k] = o[k]; n++; } } });
-      return { got: got, n: n };
-    }),
-    botQ()
-  ]).then(function(res){
-    var live = res[0], bq = res[1];
-    if (live.n){
-      applyVals(live.got);
-      document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + live.n + "종목) · 30초 갱신";
-    } else if (bq && bq.prices){
-      applyVals(bq.prices);
-      document.getElementById("livestat").innerHTML =
-        "● 봇 최신 시세 — " + agoMin(bq.time) + "분 전 갱신 (5분 주기) <span class='k'>| 실시간 경로 재시도중</span>";
-    } else {
-      document.getElementById("livestat").textContent = "연결 대기중 — 다음 갱신에서 재시도합니다";
-    }
-  }).catch(function(){});
+function setP(c, p){
+  if (!p) return;
+  PR[c] = p;
+  var e1 = document.getElementById("px_" + c), e2 = document.getElementById("pl_" + c);
+  if (e1) e1.textContent = p.toFixed(2);
+  if (e2 && AVG[c]){
+    var r = (p / AVG[c] - 1) * 100;
+    e2.textContent = (r >= 0 ? "▲ +" : "▼ ") + r.toFixed(1) + "%";
+    e2.style.color = r >= 0 ? "#2FBF71" : "#E5484D";
+  }
+  var eq = CASH;
+  for (var k in QTY) eq += QTY[k] * (PR[k] || LASTP[k] || 0);
+  var big = document.getElementById("bignum");
+  if (big) big.textContent = "$" + Math.round(eq).toLocaleString("en-US");
 }
-liveTick(); setInterval(liveTick, 30000);
+function tick(){
+  botQ().then(function(bq){
+    if (bq && bq.prices){
+      if (!liveOK) for (var c in bq.prices) setP(c, bq.prices[c]);
+      document.getElementById("livestat").innerHTML = "● 봇 시세 — " + agoMin(bq.time) +
+        "분 전 <span class='k'>| 실시간 " + (liveOK ? "사용중" : "경로 탐색중") + "</span>";
+    }
+  });
+  Promise.all(chunks(CODES, 4).map(fetchChunk)).then(function(rs){
+    var got = {}, n = 0;
+    rs.forEach(function(o){ if (o){ for (var k in o){ got[k] = o[k]; n++; } } });
+    if (n){ liveOK = true; for (var c in got) setP(c, got[c]);
+      document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + n + "종목) · 30초 갱신"; }
+  });
+}
+function alpStream(){
+  var id = localStorage.getItem("alp_page_id"), sec = localStorage.getItem("alp_page_sec");
+  if (!id || !sec) return;
+  try { if (wsAlp) wsAlp.close(); } catch(e){}
+  var ws = new WebSocket("wss://stream.data.alpaca.markets/v2/iex");
+  wsAlp = ws;
+  ws.onopen = function(){
+    ws.send(JSON.stringify({ action: "auth", key: id, secret: sec }));
+    ws.send(JSON.stringify({ action: "subscribe", trades: CODES }));
+    document.getElementById("livestat").innerHTML =
+      "<b style='color:#F5B942'>● Alpaca 초단위 실시간 스트리밍</b>";
+  };
+  ws.onmessage = function(ev){
+    var ms; try { ms = JSON.parse(ev.data); } catch(e){ return; }
+    if (!Array.isArray(ms)) return;
+    ms.forEach(function(m){ if (m.S && typeof m.p === "number" && QTY[m.S]) setP(m.S, m.p); });
+  };
+  ws.onclose = function(){ setTimeout(alpStream, 10000); };
+}
+function saveAlp(){
+  localStorage.setItem("alp_page_id", document.getElementById("alp_id").value.trim());
+  localStorage.setItem("alp_page_sec", document.getElementById("alp_page_sec").value.trim());
+  msg("Alpaca 실시간 연결 시도 중…");
+  alpStream();
+}
+tick(); setInterval(tick, 30000);
+if (localStorage.getItem("alp_page_id")) alpStream();
 """
 
 codes_all = [a["code"] for a in assets]
