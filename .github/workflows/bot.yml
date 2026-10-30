@@ -1,6 +1,6 @@
 name: rotation-bot
 
-# 20분마다 자동 실행 + Actions 페이지의 Run workflow 폼에서 시작/정지·설정 가능 (개인 토큰 불필요)
+# 20분마다 자동 실행 + Run workflow 폼에서 시작/정지·설정 (개인 토큰 불필요)
 on:
   schedule:
     - cron: "*/20 * * * *"
@@ -38,7 +38,7 @@ on:
         default: 변경 안 함
 
 permissions:
-  contents: write            # 설정·계좌·기록 커밋 (깃허브 내부 토큰 사용)
+  contents: write
   pages: write
   id-token: write
 
@@ -62,7 +62,7 @@ jobs:
 
       - name: 봇 위치 찾기·복사
         run: |
-          SRC=$(dirname "$(find . -name server_bot.py -not -path './.git/*' | head -1)")
+          SRC=$(dirname "$(find . -name server_bot.py -not -path './.git/*' -not -path './work/*' | head -1)")
           if [ ! -f "$SRC/server_bot.py" ]; then
             echo "::error::server_bot.py가 저장소에 없습니다. Code 탭 → Add file → Upload files 로 업로드해 주세요."
             exit 1
@@ -71,10 +71,12 @@ jobs:
             [ -f "$SRC/$f" ] || { echo "::error::$SRC 에 $f 없음 — 함께 업로드해 주세요."; exit 1; }
           done
           mkdir -p work
-          cp "$SRC/server_bot.py" "$SRC/universe_us.json" "$SRC/make_dashboard.py" work/
-          [ -f "$SRC/settings.json" ] && cp "$SRC/settings.json" work/ || true
+          if [ "$SRC" != "work" ]; then
+            cp "$SRC/server_bot.py" "$SRC/universe_us.json" "$SRC/make_dashboard.py" work/
+            [ -f "$SRC/settings.json" ] && cp "$SRC/settings.json" work/ || true
+          fi
+          echo "봇 폴더: $SRC → work/ 에서 실행합니다"
 
-      # Run workflow 폼에서 고른 값 → settings.json 에 기록 (깃허브 내부 권한으로 처리)
       - name: 대시보드 설정 반영
         run: |
           python3 - <<'PY'
@@ -87,9 +89,9 @@ jobs:
           e = {k: os.environ.get(k, "") for k in ("I_EN", "I_TOP", "I_REB", "I_STOP", "I_TAKE", "I_TRAIL")}
           if e["I_EN"] in ("시작", "정지"):
               cfg["enabled"] = e["I_EN"] == "시작"
-          if e["I_TOP"] != "변경 안 함" and e["I_TOP"]:
+          if e["I_TOP"] not in ("변경 안 함", ""):
               cfg["top_n"] = int(e["I_TOP"])
-          if e["I_REB"] != "변경 안 함" and e["I_REB"]:
+          if e["I_REB"] not in ("변경 안 함", ""):
               cfg["rebal_min"] = int(e["I_REB"])
           if e["I_STOP"] not in ("변경 안 함", ""):
               cfg["stop"] = -abs(float(e["I_STOP"])) / 100
@@ -117,11 +119,15 @@ jobs:
       - name: 웹 대시보드 생성
         run: cd work && python3 make_dashboard.py
 
-      - name: 계좌·기록·설정 저장(커밋)
+      # 기록 파일만 커밋 — 봇 스크립트 복사본은 저장소에 다시 안 올림(다음 실행 오류 방지)
+      - name: 계좌·기록 저장(커밋)
         run: |
           git config user.name "rotation-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add work/
+          git rm --cached work/server_bot.py work/universe_us.json work/make_dashboard.py 2>/dev/null || true
+          for f in state.json trades.csv index.html settings.json; do
+            git add "work/$f" 2>/dev/null || true
+          done
           if ! git diff --cached --quiet; then
             git commit -m "매매 기록·대시보드 갱신"
             git push
