@@ -4,5 +4,5 @@
   "stop": -0.12,
   "take": 0.15,
   "trail": 0.07,
-  "enabled": false
+  "enabled": true
 }
