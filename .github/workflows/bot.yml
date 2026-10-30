@@ -114,8 +114,8 @@ jobs:
         run: |
           cd work
           for i in 1 2; do
-            python3 server_bot.py --once || exit 1
-            [ $i -lt 2 ] && sleep 55
+            python3 server_bot.py --once || echo "[경고] 사이클 비정상 종료 — 기록·페이지 발행은 계속 진행"
+            if [ $i -lt 2 ]; then sleep 55; fi
           done
         env:
           ALPACA_ID: ${{ secrets.ALPACA_ID }}
