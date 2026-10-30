@@ -45,6 +45,7 @@ jobs:
           done
           mkdir -p work
           cp "$SRC/server_bot.py" "$SRC/universe_us.json" "$SRC/make_dashboard.py" work/
+          if [ -f settings.json ]; then cp settings.json work/; fi
           echo "봇 폴더: $SRC → work/ 에서 실행합니다"
 
       - name: 봇 1회 실행 (표준 라이브러리만 사용)
