@@ -1,0 +1,55 @@
+name: rotation-bot
+
+# 20분마다 자동 실행 (미국 정규장에만 실제 매매 — 봇이 장중을 판단)
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:          # Actions 탭의 Run workflow 버튼으로 수동 실행도 가능
+
+permissions:
+  contents: write             # 계좌·매매 기록을 저장소에 커밋해 두기 위함
+
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      # 봇 파일이 어느 폴더에 있든 자동으로 찾아서 실행 (폴더째 업로드해도 동작)
+      - name: 봇 위치 찾기
+        run: |
+          DIR=$(dirname "$(find . -name server_bot.py -not -path './.git/*' | head -1)")
+          if [ -z "$DIR" ] || [ "$DIR" = "." ]; then
+            if [ ! -f ./server_bot.py ]; then
+              echo "::error::server_bot.py가 저장소 어디에도 없습니다. Code 탭 → Add file → Upload files 로 키트 파일들을 업로드해 주세요."
+              exit 1
+            fi
+            DIR="."
+          fi
+          if [ ! -f "$DIR/universe_us.json" ]; then
+            echo "::error::$DIR 에 universe_us.json이 없습니다. server_bot.py와 같은 폴더에 함께 업로드해 주세요."
+            exit 1
+          fi
+          echo "BOT_DIR=$DIR" >> "$GITHUB_ENV"
+          echo "봇 폴더: $DIR"
+
+      - name: 봇 1회 실행 (추가 설치 없음 — 표준 라이브러리만 사용)
+        run: python3 "$BOT_DIR/server_bot.py" --once
+        env:
+          ALPACA_ID: ${{ secrets.ALPACA_ID }}
+          ALPACA_SEC: ${{ secrets.ALPACA_SEC }}
+
+      - name: 계좌 상태·매매 기록 저장(커밋)
+        run: |
+          git config user.name "rotation-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "매매 기록 갱신"
+            git push
+          fi
