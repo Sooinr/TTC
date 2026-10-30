@@ -44,7 +44,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true        # 새 실행이 시작되면 밀린 이전 실행을 정리 (기록은 매 사이클 즉시 커밋되므로 안전)
 
 jobs:
   bot:
@@ -110,8 +110,13 @@ jobs:
           I_TAKE: ${{ github.event.inputs.take_pct }}
           I_TRAIL: ${{ github.event.inputs.trail_pct }}
 
-      - name: 봇 1회 실행
-        run: cd work && python3 server_bot.py --once
+      - name: 봇 루프 실행 (1분 간격 2사이클 — 시세·감시를 1분대로 유지)
+        run: |
+          cd work
+          for i in 1 2; do
+            python3 server_bot.py --once || exit 1
+            [ $i -lt 2 ] && sleep 55
+          done
         env:
           ALPACA_ID: ${{ secrets.ALPACA_ID }}
           ALPACA_SEC: ${{ secrets.ALPACA_SEC }}
