@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "top_n": 8,
   "rebal_min": 10,
   "stop": -0.08,
