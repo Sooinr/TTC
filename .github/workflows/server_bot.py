@@ -233,11 +233,28 @@ def close_pos(st, code, px, reason):
     log_trade("손절" if pnl <= 0 and "손절" in reason else "매도", code,
               p["qty"], px, reason, pnl)
 
+def close_partial(st, code, qty, px, reason):
+    p = st["pos"][code]
+    qty = min(int(qty), p["qty"])
+    if qty < 1:
+        return
+    gross = qty * px * (1 - FEE)
+    pnl = gross - qty * p["avg"]
+    st["cash"] += gross
+    st["realized"] += pnl
+    st["wins"] += pnl > 0
+    st["closes"] += 1
+    st["trades"] += 1
+    p["qty"] -= qty
+    log_trade("일부매도", code, qty, px, reason, pnl)
+
 
 def open_pos(st, code, px, qty, reason):
-    cost = qty * px * (1 + FEE)
-    if cost > st["cash"] or qty < 1:
+    qty = int(min(qty, st["cash"] / (px * (1 + FEE))))
+    if qty < 1:
+        print(f"[현금 부족] {code} 매수 생략 — 가용 현금 {st['cash']:,.0f}$")
         return False
+    cost = qty * px * (1 + FEE)
     st["cash"] -= cost
     st["pos"][code] = {"qty": qty, "avg": cost / qty, "peak": px}
     st["trades"] += 1
@@ -271,10 +288,18 @@ def rebalance(st, prices, top_n):
         if c not in picked:
             close_pos(st, c, prices[c], f"리밸런스 #{st['rebal_count']} 랭킹 이탈")
     total = equity(st, prices)
+    tgt = total / len(picks)
+    for c in list(st["pos"]):                       # 과다 보유 축소 → 현금 확보
+        p = st["pos"][c]
+        val = p["qty"] * prices[c]
+        if val > tgt * 1.05:
+            close_partial(st, c, (val - tgt) / prices[c], prices[c],
+                          f"리밸런스 #{st['rebal_count']} 비중 축소({val/tgt*100:.0f}%→100%)")
     for x in picks:
         c = x["code"]
-        open_pos(st, c, prices[c], (total / len(picks)) / prices[c], f"리밸런스 균등 배분 #{st['rebal_count']}")
-    print(f"[리밸런스 #{st['rebal_count']}] 보유 {len(picked)}종목: {', '.join(picked)}")
+        if c not in st["pos"]:
+            open_pos(st, c, prices[c], tgt / prices[c], f"리밸런스 균등 배분 #{st['rebal_count']}")
+    print(f"[리밸런스 #{st['rebal_count']}] 실제 보유 {len(st['pos'])}종목: {', '.join(st['pos'])}")
 
 
 def ranked(st, prices, top_n):
