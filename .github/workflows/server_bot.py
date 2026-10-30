@@ -332,6 +332,25 @@ def ny_today():
         return ""
 
 
+SETTINGS_FILE = os.path.join(HERE, "settings.json")
+
+
+def load_settings():
+    """저장소 루트 settings.json — 웹 대시보드 제어 패널이 갱신하는 파일"""
+    s = {"enabled": True, "top_n": None, "rebal_min": None, "stop": None, "take": None, "trail": None}
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, encoding="utf-8") as f:
+                j = json.load(f)
+            for k in s:
+                if k in j:
+                    s[k] = j[k]
+            print(f"[설정] settings.json 적용 — enabled={s['enabled']}")
+        except (OSError, ValueError) as e:
+            print(f"[설정] settings.json 오류 — 기본값 사용: {e}")
+    return s
+
+
 def market_open_now():
     try:
         if ZoneInfo is None:
@@ -376,13 +395,23 @@ def main():
 
 
 
-    print(f"[시작] 유니버스 {len(codes)}종목 · 보유 {a.top} · {a.rebal}분 리밸런스 · "
+    sset = load_settings()
+    if not sset["enabled"]:
+        print("[정지] 웹 대시보드 제어 패널에서 '정지' 상태 — 매매를 건너뜁니다 (▶ 시작으로 재개)")
+        save_state(st)
+        return
+    top_n = sset["top_n"] or a.top
+    rebal = sset["rebal_min"] or a.rebal
+    stop_l = sset["stop"] if sset["stop"] is not None else a.stop
+    take_l = sset["take"] if sset["take"] is not None else 0.08
+    trail_l = sset["trail"] if sset["trail"] is not None else 0.05
+    print(f"[시작] 유니버스 {len(codes)}종목 · 보유 {top_n} · {rebal}분 리밸런스 · "
           f"{a.poll}초 갱신 — 장중에만 매매합니다")
     while True:
         if market_open_now():
             prices = get_prices(codes, a)
             if prices:
-                run_cycle(st, prices, a.top, a.rebal, a.stop)
+                run_cycle(st, prices, top_n, rebal, stop_l, take_l, trail_l)
         else:
             print(f"[{datetime.now():%H:%M}] 장 마감 — 대기 중")
             save_state(st)
