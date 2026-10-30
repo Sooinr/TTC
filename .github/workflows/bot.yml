@@ -1,14 +1,45 @@
 name: rotation-bot
 
-# 20분마다 자동 실행 → 대시보드(index.html) 재생성 → 웹페이지에 반영
+# 20분마다 자동 실행 + Actions 페이지의 Run workflow 폼에서 시작/정지·설정 가능 (개인 토큰 불필요)
 on:
   schedule:
     - cron: "*/20 * * * *"
-  workflow_dispatch:          # Actions 탭의 Run workflow 버튼으로 수동 실행도 가능
+  workflow_dispatch:
+    inputs:
+      enabled:
+        description: "봇 상태"
+        type: choice
+        options: [변경 안 함, 시작, 정지]
+        default: 변경 안 함
+      top_n:
+        description: "보유 종목 수"
+        type: choice
+        options: [변경 안 함, 2, 3, 4, 5, 6, 7, 8]
+        default: 변경 안 함
+      rebal_min:
+        description: "리밸런스 주기(분)"
+        type: choice
+        options: [변경 안 함, 10, 15, 20, 30, 60]
+        default: 변경 안 함
+      stop_pct:
+        description: "손절 %"
+        type: choice
+        options: [변경 안 함, 3, 5, 8, 10, 12, 15]
+        default: 변경 안 함
+      take_pct:
+        description: "익절 %"
+        type: choice
+        options: [변경 안 함, 3, 5, 8, 10, 12, 15]
+        default: 변경 안 함
+      trail_pct:
+        description: "트레일링 %"
+        type: choice
+        options: [변경 안 함, 3, 4, 5, 7, 10]
+        default: 변경 안 함
 
 permissions:
-  contents: write            # 계좌·기록 커밋 푸시용
-  pages: write               # 대시보드 웹페이지 발행용
+  contents: write            # 설정·계좌·기록 커밋 (깃허브 내부 토큰 사용)
+  pages: write
   id-token: write
 
 concurrency:
@@ -29,26 +60,55 @@ jobs:
         with:
           python-version: "3.11"
 
-      # 봇 파일을 어느 폴더에 올리든 자동으로 찾아 별도 work/ 폴더에서 실행
       - name: 봇 위치 찾기·복사
         run: |
           SRC=$(dirname "$(find . -name server_bot.py -not -path './.git/*' | head -1)")
           if [ ! -f "$SRC/server_bot.py" ]; then
-            echo "::error::server_bot.py가 저장소에 없습니다. Code 탭 → Add file → Upload files 로 키트 파일을 업로드해 주세요."
+            echo "::error::server_bot.py가 저장소에 없습니다. Code 탭 → Add file → Upload files 로 업로드해 주세요."
             exit 1
           fi
           for f in universe_us.json make_dashboard.py; do
-            if [ ! -f "$SRC/$f" ]; then
-              echo "::error::$SRC 에 $f 없음 — server_bot.py와 같은 폴더에 함께 업로드해 주세요."
-              exit 1
-            fi
+            [ -f "$SRC/$f" ] || { echo "::error::$SRC 에 $f 없음 — 함께 업로드해 주세요."; exit 1; }
           done
           mkdir -p work
           cp "$SRC/server_bot.py" "$SRC/universe_us.json" "$SRC/make_dashboard.py" work/
-          if [ -f settings.json ]; then cp settings.json work/; fi
-          echo "봇 폴더: $SRC → work/ 에서 실행합니다"
+          [ -f "$SRC/settings.json" ] && cp "$SRC/settings.json" work/ || true
 
-      - name: 봇 1회 실행 (표준 라이브러리만 사용)
+      # Run workflow 폼에서 고른 값 → settings.json 에 기록 (깃허브 내부 권한으로 처리)
+      - name: 대시보드 설정 반영
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = os.path.join("work", "settings.json")
+          try:
+              cfg = json.load(open(p, encoding="utf-8"))
+          except Exception:
+              cfg = {"enabled": True, "top_n": 4, "rebal_min": 20, "stop": -0.08, "take": 0.08, "trail": 0.05}
+          e = {k: os.environ.get(k, "") for k in ("I_EN", "I_TOP", "I_REB", "I_STOP", "I_TAKE", "I_TRAIL")}
+          if e["I_EN"] in ("시작", "정지"):
+              cfg["enabled"] = e["I_EN"] == "시작"
+          if e["I_TOP"] != "변경 안 함" and e["I_TOP"]:
+              cfg["top_n"] = int(e["I_TOP"])
+          if e["I_REB"] != "변경 안 함" and e["I_REB"]:
+              cfg["rebal_min"] = int(e["I_REB"])
+          if e["I_STOP"] not in ("변경 안 함", ""):
+              cfg["stop"] = -abs(float(e["I_STOP"])) / 100
+          if e["I_TAKE"] not in ("변경 안 함", ""):
+              cfg["take"] = abs(float(e["I_TAKE"])) / 100
+          if e["I_TRAIL"] not in ("변경 안 함", ""):
+              cfg["trail"] = abs(float(e["I_TRAIL"])) / 100
+          json.dump(cfg, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          print("적용된 설정:", cfg)
+          PY
+        env:
+          I_EN: ${{ github.event.inputs.enabled }}
+          I_TOP: ${{ github.event.inputs.top_n }}
+          I_REB: ${{ github.event.inputs.rebal_min }}
+          I_STOP: ${{ github.event.inputs.stop_pct }}
+          I_TAKE: ${{ github.event.inputs.take_pct }}
+          I_TRAIL: ${{ github.event.inputs.trail_pct }}
+
+      - name: 봇 1회 실행
         run: cd work && python3 server_bot.py --once
         env:
           ALPACA_ID: ${{ secrets.ALPACA_ID }}
@@ -57,12 +117,11 @@ jobs:
       - name: 웹 대시보드 생성
         run: cd work && python3 make_dashboard.py
 
-      - name: 계좌·기록을 저장소에 저장
+      - name: 계좌·기록·설정 저장(커밋)
         run: |
           git config user.name "rotation-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add work/state.json work/trades.csv 2>/dev/null || true
-          git add work/index.html
+          git add work/
           if ! git diff --cached --quiet; then
             git commit -m "매매 기록·대시보드 갱신"
             git push
