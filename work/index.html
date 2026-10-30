@@ -1,58 +1,105 @@
-<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>로테이션 봇 대시보드</title>
-<style>body{font-family:sans-serif;background:#0E1216;color:#E9EDF3;padding:14px;margin:0}
-.wrap{max-width:900px;margin:0 auto}
-.k{color:#93A0B0;font-size:11px} h2{font-size:14px;color:#F5B942;margin:16px 0 2px}
-.big{font-size:32px;font-weight:700;color:#2FBF71;margin:2px 0}
-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
-td,th{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left}
-.kpi{flex:1;min-width:120px;background:#161C24;border:1px solid #29323E;border-radius:8px;padding:8px 10px}
-.kv{font-size:15px;font-weight:700;margin-top:2px}
+<style>
+*{box-sizing:border-box}
+body{font-family:sans-serif;background:#0E1216;color:#E9EDF3;margin:0;padding:10px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border-bottom:1px solid #29323E;padding-bottom:8px}
+.tt{font-size:17px;font-weight:800} .bdg{background:#F5B942;color:#0E1216;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700}
+.k{color:#93A0B0;font-size:11px}
+.grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+.colL{flex:1.5;min-width:320px} .colR{flex:1;min-width:320px}
+@media(max-width:880px){.grid{flex-direction:column}.colR{order:-1}}
+h2{font-size:13.5px;color:#F5B942;margin:14px 0 2px}
 .card{background:#161C24;border:1px solid #29323E;border-radius:10px;padding:10px;margin-top:8px}
-.cards{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.in{background:#1D2530;color:#E9EDF3;border:1px solid #29323E;border-radius:6px;padding:4px 6px}
-.bt{color:#fff;border:0;border-radius:7px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px}</style><div class="wrap">
-<h2 style="margin-top:0">로테이션 봇 대시보드</h2>
-<div class="k">마지막 실행: 2026-10-30 03:32 UTC · 20분마다 자동 실행 · 미국 정규장(뉴욕 09:30~16:00)에만 매매 · <a href="#" onclick="location.reload();return false" style="color:#7FB2F0">새로고침</a></div>
-<div class="big">$10,000,000</div><div class="k">수익률 +0.0% · 시작자본 $10,000,000</div>
-<div class="cards"><div class='kpi'><div class='k'>현금</div><div class='kv'>$10,000,000</div></div><div class='kpi'><div class='k'>투자중</div><div class='kv'>0%</div></div><div class='kpi'><div class='k'>평가손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>실현손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>리밸런스</div><div class='kv'>0회</div></div><div class='kpi'><div class='k'>매매</div><div class='kv'>0건</div></div><div class='kpi'><div class='k'>승률</div><div class='kv'>0%</div></div></div>
-
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+td,th{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left;white-space:nowrap}
+.kpi{flex:1;min-width:calc(25% - 8px);background:#1D2530;border:1px solid #29323E;border-radius:8px;padding:7px 9px}
+.kv{font-size:14px;font-weight:700;margin-top:2px}
+.kgrid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.bignum{font-size:30px;font-weight:800;color:#2FBF71}
+.rk{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 4px;border-radius:4px}
+.rn{width:18px;color:#93A0B0;text-align:right} .rc{width:100px;overflow:hidden;text-overflow:ellipsis}
+.rb{flex:1;background:#1D2530;border-radius:3px;height:11px;overflow:hidden}
+.rb i{display:block;height:11px} .rv{width:52px;text-align:right;font-weight:600}
+.rk.held{background:#22271a}
+.sc{flex:1;min-width:110px;background:#1D2530;border:1px solid #29323E;border-radius:8px;padding:7px 9px}
+.hsec{border-color:#F5B942} .sn{font-size:11px;color:#93A0B0} .sv{font-size:15px;font-weight:700;margin-top:2px}
+.cards{display:flex;flex-wrap:wrap;gap:7px}
+.chart{width:100%;height:110px;display:block}
+.bar{position:relative;background:#1D2530;border-radius:4px;height:16px;margin-top:8px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;height:16px;background:#2FBF71;opacity:.6}
+.bar span{position:absolute;width:100%;text-align:center;font-size:10.5px;color:#E9EDF3;line-height:16px}
+.status{border:1px solid #F5B942;border-radius:10px;padding:9px 11px;margin-top:8px;font-size:12px;color:#B8C2CF}
+.in{background:#1D2530;color:#E9EDF3;border:1px solid #29323E;border-radius:6px;padding:5px 7px;font-size:12.5px}
+.bt{color:#fff;border:0;border-radius:7px;padding:9px 13px;font-weight:700;cursor:pointer;font-size:13px}
+.bt2{background:#1D2530;color:#E9EDF3;border:1px solid #29323E;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px}
+.lb{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#93A0B0;flex:1;min-width:110px}
+.rng{width:100%}
+</style>
+<div class="top"><span class="tt">포트폴리오 로테이션 터미널</span><span class="bdg">US PAPER</span>
+<span class="k">유니버스 24종목 · 11섹터 · Alpaca 실시간 시세</span>
+<span class="k" style="margin-left:auto" id="clk">10-30 04:04 UTC</span></div>
+<div class="grid">
+ <div class="colL">
+  <h2>회전 · 매매 기록</h2><div class='card'><table><tr><th>시각</th><th>구분</th><th>종목</th><th>가격</th><th>사유</th><th>손익$</th></tr><tr><td colspan='6'>아직 기록 없음 — 장 시작 후 첫 리밸런스에서 매수</td></tr></table></div>
+  <h2>자산 곡선</h2><div class='card'><div class='chart' style='text-align:center;padding-top:26px'>실행 데이터가 쌓이면 곡선이 그려집니다</div><div class='k'>총자산 $10,000,000 (+0.0%)</div></div>
+  <h2>유니버스 모멘텀 랭킹</h2><div class='card'><div class='rk'><span class='rn'>1</span><span class='rc'>테슬라</span><span class='rb'><i style='width:83%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>18.4%</span></div><div class='rk'><span class='rn'>2</span><span class='rc'>일라이릴리</span><span class='rb'><i style='width:82%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>18.2%</span></div><div class='rk'><span class='rn'>3</span><span class='rc'>엑슨모빌</span><span class='rb'><i style='width:70%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>15.4%</span></div><div class='rk'><span class='rn'>4</span><span class='rc'>팔런티어</span><span class='rb'><i style='width:65%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>14.3%</span></div><div class='rk'><span class='rn'>5</span><span class='rc'>애플</span><span class='rb'><i style='width:38%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>8.5%</span></div><div class='rk'><span class='rn'>6</span><span class='rc'>퀄컴</span><span class='rb'><i style='width:26%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>5.7%</span></div><div class='rk'><span class='rn'>7</span><span class='rc'>코스트코</span><span class='rb'><i style='width:26%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>5.7%</span></div><div class='rk'><span class='rn'>8</span><span class='rc'>유나이티드헬스</span><span class='rb'><i style='width:26%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>5.6%</span></div><div class='rk'><span class='rn'>9</span><span class='rc'>마이크로소프트</span><span class='rb'><i style='width:16%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>3.6%</span></div><div class='rk'><span class='rn'>10</span><span class='rc'>AMD</span><span class='rb'><i style='width:14%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>3.0%</span></div><div class='rk'><span class='rn'>11</span><span class='rc'>맥도날드</span><span class='rb'><i style='width:6%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>1.2%</span></div><div class='rk'><span class='rn'>12</span><span class='rc'>JP모건</span><span class='rb'><i style='width:4%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>1.0%</span></div><div class='rk'><span class='rn'>13</span><span class='rc'>코인베이스</span><span class='rb'><i style='width:2%;background:#2FBF71'></i></span><span class='rv' style='color:#2FBF71'>0.4%</span></div><div class='rk'><span class='rn'>14</span><span class='rc'>마이크론</span><span class='rb'><i style='width:7%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-1.6%</span></div><div class='rk'><span class='rn'>15</span><span class='rc'>메타</span><span class='rb'><i style='width:18%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-4.0%</span></div><div class='rk'><span class='rn'>16</span><span class='rc'>아마존</span><span class='rb'><i style='width:24%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-5.3%</span></div><div class='rk'><span class='rn'>17</span><span class='rc'>엔비디아</span><span class='rb'><i style='width:24%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-5.4%</span></div><div class='rk'><span class='rn'>18</span><span class='rc'>우버</span><span class='rb'><i style='width:27%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-6.0%</span></div><div class='rk'><span class='rn'>19</span><span class='rc'>로빈후드</span><span class='rb'><i style='width:42%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-9.2%</span></div><div class='rk'><span class='rn'>20</span><span class='rc'>브로드컴</span><span class='rb'><i style='width:49%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-10.9%</span></div><div class='rk'><span class='rn'>21</span><span class='rc'>넷플릭스</span><span class='rb'><i style='width:53%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-11.8%</span></div><div class='rk'><span class='rn'>22</span><span class='rc'>알파벳</span><span class='rb'><i style='width:83%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-18.3%</span></div><div class='rk'><span class='rn'>23</span><span class='rc'>보잉</span><span class='rb'><i style='width:86%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-19.0%</span></div><div class='rk'><span class='rn'>24</span><span class='rc'>캐터필러</span><span class='rb'><i style='width:100%;background:#E5484D'></i></span><span class='rv' style='color:#E5484D'>-22.1%</span></div><div class='k' style='margin-top:6px'>노란 막대 = 현재 보유 · 점수 = 개별 모멘텀 60% + 섹터 열기 40%</div></div>
+  <h2>섹터 현황</h2><div class='card'><div class='k'>최강 섹터: <b style='color:#F5B942'>에너지</b></div><div class='cards' style='margin-top:6px'><div class='sc'><div class='sn'>에너지</div><div class='sv' style='color:#2FBF71'>15.4%</div></div><div class='sc'><div class='sn'>AI·소프트웨어</div><div class='sv' style='color:#2FBF71'>14.3%</div></div><div class='sc'><div class='sn'>의료·제약</div><div class='sv' style='color:#2FBF71'>11.9%</div></div><div class='sc'><div class='sn'>전기차·모빌리티</div><div class='sv' style='color:#2FBF71'>6.2%</div></div><div class='sc'><div class='sn'>소비·유통</div><div class='sv' style='color:#2FBF71'>3.4%</div></div><div class='sc'><div class='sn'>금융</div><div class='sv' style='color:#2FBF71'>1.0%</div></div><div class='sc'><div class='sn'>반도체·AI</div><div class='sv' style='color:#E5484D'>-1.8%</div></div><div class='sc'><div class='sn'>빅테크</div><div class='sv' style='color:#E5484D'>-3.1%</div></div><div class='sc'><div class='sn'>가상자산·핀테크</div><div class='sv' style='color:#E5484D'>-4.4%</div></div><div class='sc'><div class='sn'>엔터테인먼트</div><div class='sv' style='color:#E5484D'>-11.8%</div></div><div class='sc'><div class='sn'>산업·방산</div><div class='sv' style='color:#E5484D'>-20.6%</div></div></div></div>
+ </div>
+ <div class="colR">
+  <h2>계좌 현황</h2><div class="card"><div class="bignum">$10,000,000</div>
+<div class="k">수익률 +0.0% · 시작자산 $10,000,000 · <b style="color:#2FBF71">봇 실행중</b></div>
+<div class="kgrid">
+<div class='kpi'><div class='k'>현금</div><div class='kv'>$10,000,000</div></div><div class='kpi'><div class='k'>투자중</div><div class='kv'>0%</div></div><div class='kpi'><div class='k'>평가손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>실현손익</div><div class='kv'>$0</div></div>
+<div class='kpi'><div class='k'>최대낙폭</div><div class='kv'>0.0%</div></div><div class='kpi'><div class='k'>리밸런스</div><div class='kv'>0회</div></div><div class='kpi'><div class='k'>매매</div><div class='kv'>0건</div></div><div class='kpi'><div class='k'>승률</div><div class='kv'>—</div></div>
+</div></div>
+  <h2>보유 포트폴리오 (0/4)</h2><div class="card"><table><tr><th>종목</th><th>섹터</th><th>수량</th><th>평단$</th><th>현재가</th><th>손익</th></tr><tr><td colspan='6'>보유 종목 없음 — 다음 리밸런스에서 편입 시도</td></tr></table>
+<div class="bar"><i style="width:0%"></i><span>현금 100% / 투자 0%</span></div></div>
+  <div class="status"><div class='k'>봇이 지금 보고 있는 것: 장 마감 — 다음 개장(서울 밤 11:30~12:30) 후 자동 재개 · 마지막 실행 10-30 04:04 UTC</div></div>
+  <h2>제어</h2>
 <div class="card" id="ctrl">
- <h3 style="margin:0 0 6px;font-size:13px;color:#F5B942">제어 패널</h3>
- <div id="badge" style="font-size:14px;font-weight:700;color:#E5484D">봇 상태: 정지됨 <span class="k">(페이지를 연 시점 기준 · 아래 버튼으로 변경)</span></div>
- <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
-  <button onclick="setEn(true)"  class="bt" style="background:#2FBF71">▶ 시작</button>
+ <h3 style="margin:0 0 6px;font-size:13px;color:#F5B942">전략 설정 · 제어</h3>
+ <div id="badge" style="font-size:13px;font-weight:700;color:#2FBF71">봇 상태: 실행중</div>
+ <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">
+  <button onclick="preset('aggr')" class="bt2">공격형</button>
+  <button onclick="preset('bal')" class="bt2">균형형</button>
+  <button onclick="preset('def')" class="bt2">보수형</button>
+ </div>
+ <label class="lb">동시 보유 종목 수 <b id="v_top" style="color:#F5B942">4</b>개
+  <input type="range" id="c_top" min="2" max="8" step="1" value="4" class="rng"
+   oninput="document.getElementById('v_top').textContent=this.value"></label>
+ <label class="lb">리밸런스 주기(분)
+  <select id="c_rebal" class="in"><option  value='10'>10</option><option  value='15'>15</option><option selected value='20'>20</option><option  value='30'>30</option><option  value='60'>60</option></select></label>
+ <div style="display:flex;flex-wrap:wrap;gap:8px">
+  <label class="lb">손절 %<input id="c_stop" type="number" step="1" class="in" style="width:60px" value="8"></label>
+  <label class="lb">익절 %<input id="c_take" type="number" step="1" class="in" style="width:60px" value="8"></label>
+  <label class="lb">트레일링 %<input id="c_trail" type="number" step="1" class="in" style="width:60px" value="5"></label>
+ </div>
+ <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px">
+  <button onclick="setEn(true)" class="bt" style="background:#2FBF71">▶ 시작</button>
   <button onclick="setEn(false)" class="bt" style="background:#E5484D">■ 정지</button>
-  <button onclick="saveCfg()"    class="bt" style="background:#F5B942;color:#0E1216">설정 저장</button>
-  <button onclick="runNow()"     class="bt" style="background:#3E76D6">지금 리밸런스</button>
+  <button onclick="saveCfg()" class="bt" style="background:#F5B942;color:#0E1216">설정 저장</button>
+  <button onclick="runNow()" class="bt" style="background:#3E76D6">지금 리밸런스</button>
  </div>
- <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:12px">
-  <label>보유 종목 수 <select id="c_top" class="in"><option  value='2'>2</option><option  value='3'>3</option><option selected value='4'>4</option><option  value='5'>5</option><option  value='6'>6</option><option  value='7'>7</option><option  value='8'>8</option></select></label>
-  <label>리밸런스 주기(분) <select id="c_rebal" class="in"><option  value='10'>10</option><option  value='15'>15</option><option selected value='20'>20</option><option  value='30'>30</option><option  value='60'>60</option></select></label>
-  <label>손절 % <input id="c_stop" type="number" step="1" class="in" style="width:64px" value="8"></label>
-  <label>익절 % <input id="c_take" type="number" step="1" class="in" style="width:64px" value="8"></label>
-  <label>트레일링 % <input id="c_trail" type="number" step="1" class="in" style="width:64px" value="5"></label>
- </div>
- <div style="margin-top:8px;font-size:12px">
-  <input id="tok" class="in" style="width:270px" placeholder="GitHub 토큰 — 한 번만 넣으면 저장됨">
+ <div style="margin-top:6px;font-size:12px">
+  <input id="tok" class="in" style="width:100%;max-width:260px" placeholder="GitHub 토큰">
   <button onclick="saveTok()" class="bt" style="background:#29323E">토큰 저장</button>
  </div>
  <div id="msg" style="margin-top:6px;font-size:12px;color:#F5B942"></div>
- <div class="k" style="margin-top:6px">변경은 <b>다음 실행(최대 20분 내)부터 적용</b>됩니다. 토큰: GitHub → Settings → Developer settings →
- Fine-grained tokens → 이 저장소만 지정, 권한 Contents: Read and write(시작/정지·설정) + Actions: Read and write(지금 리밸런스).
- 토큰은 이 브라우저에만 저장되며 언제든 폐기할 수 있습니다.</div>
+ <div class="k" style="margin-top:6px">변경은 <b>다음 실행(≤20분)부터 적용</b> · 토큰은 브라우저에만 저장</div>
 </div>
 <script>
 var OWNER = location.hostname.split(".")[0], REPO = (location.pathname.split("/")[1] || "");
+var P = { aggr:{top_n:6, rebal_min:10, stop:-0.12, take:0.15, trail:0.07},
+         bal:{top_n:4, rebal_min:20, stop:-0.08, take:0.08, trail:0.05},
+         def:{top_n:3, rebal_min:30, stop:-0.05, take:0.05, trail:0.03} };
 function b64e(s){ return btoa(unescape(encodeURIComponent(s))); }
 function b64d(s){ return decodeURIComponent(escape(atob(s.replace(/\n/g, "")))); }
-function hdr(){ var t = localStorage.getItem("gh_pat") || "";
-  var h = { "Accept": "application/vnd.github+json" };
-  if (t) h["Authorization"] = "Bearer " + t;
-  return h; }
+function hdr(){ var h = { "Accept": "application/vnd.github+json" };
+  var t = localStorage.getItem("gh_pat"); if (t) h["Authorization"] = "Bearer " + t; return h; }
 function msg(m){ document.getElementById("msg").textContent = m; }
 function badge(on){ var b = document.getElementById("badge");
-  b.innerHTML = "봇 상태: " + (on ? "실행중" : "정지됨") + ' <span class="k">(변경 시 다음 실행부터 적용)</span>';
+  b.innerHTML = "봇 상태: " + (on ? "실행중" : "정지됨") + ' <span class="k">(변경 시 다음 실행부터)</span>';
   b.style.color = on ? "#2FBF71" : "#E5484D"; }
 async function getCfg(){
   var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/settings.json", { headers: hdr() });
@@ -65,7 +112,7 @@ async function putCfg(cfg, sha){
   var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/settings.json", {
     method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, hdr()),
     body: JSON.stringify({ message: "대시보드에서 설정 변경", content: b64e(JSON.stringify(cfg, null, 2)), sha: sha, branch: "main" }) });
-  if (!r.ok) throw new Error(r.status === 403 ? "권한 없음 — 토큰의 Contents 권한 확인" : "HTTP " + r.status);
+  if (!r.ok) throw new Error(r.status === 403 ? "권한 없음 — 토큰 Contents 권한 확인" : "HTTP " + r.status);
 }
 async function updateCfg(mut){
   for (var i = 0; i < 3; i++){
@@ -75,22 +122,23 @@ async function updateCfg(mut){
   }
 }
 function fromInputs(){
-  return { enabled: null, top_n: +document.getElementById("c_top").value,
+  return { top_n: +document.getElementById("c_top").value,
            rebal_min: +document.getElementById("c_rebal").value,
            stop: -Math.abs(+document.getElementById("c_stop").value) / 100,
            take: Math.abs(+document.getElementById("c_take").value) / 100,
            trail: Math.abs(+document.getElementById("c_trail").value) / 100 };
 }
 function fill(c){
-  if (c.top_n) document.getElementById("c_top").value = c.top_n;
+  if (c.top_n){ document.getElementById("c_top").value = c.top_n; document.getElementById("v_top").textContent = c.top_n; }
   if (c.rebal_min) document.getElementById("c_rebal").value = c.rebal_min;
   if (c.stop != null) document.getElementById("c_stop").value = Math.round(Math.abs(c.stop) * 100);
   if (c.take != null) document.getElementById("c_take").value = Math.round(c.take * 100);
   if (c.trail != null) document.getElementById("c_trail").value = Math.round(c.trail * 100);
 }
+function preset(k){ fill(P[k]); msg("프리셋 적용됨 — [설정 저장]을 눌러야 반영"); }
 async function setEn(on){
   try { await updateCfg(function(c){ c.enabled = on; return c; });
-        badge(on); msg(on ? "시작 요청 완료 — 다음 실행부터 매매 재개" : "정지 요청 완료 — 다음 실행부터 매매 안 함"); }
+        badge(on); msg(on ? "시작 완료 — 다음 실행부터 매매" : "정지 완료 — 다음 실행부터 매매 안 함"); }
   catch (e) { msg("실패: " + e.message); }
 }
 async function saveCfg(){
@@ -99,20 +147,20 @@ async function saveCfg(){
   catch (e) { msg("실패: " + e.message); }
 }
 async function runNow(){
-  try { var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO +
-        "/actions/workflows/bot.yml/dispatches", { method: "POST",
-        headers: Object.assign({ "Content-Type": "application/json" }, hdr()),
-        body: JSON.stringify({ ref: "main" }) });
+  try { var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/actions/workflows/bot.yml/dispatches",
+        { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, hdr()), body: JSON.stringify({ ref: "main" }) });
     if (!r.ok) throw new Error(r.status === 403 ? "토큰에 Actions 권한 필요" : "HTTP " + r.status);
-    msg("실행 요청 완료 — Actions 탭에서 진행 확인");
+    msg("실행 요청 완료 — Actions 탭에서 확인");
   } catch (e) { msg("실패: " + e.message); }
 }
 function saveTok(){ localStorage.setItem("gh_pat", document.getElementById("tok").value.trim()); msg("토큰 저장 완료"); }
-if (!REPO) { document.getElementById("ctrl").style.display = "none"; }
-else { (async function(){ try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
-        catch (e) { msg("설정 읽기 실패: " + e.message); } })(); }
+if (!REPO) document.getElementById("ctrl").style.display = "none";
+else (async function(){ try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
+       catch (e) { msg("설정 읽기 실패: " + e.message); } })();
+setInterval(function(){ document.getElementById("clk").textContent =
+  new Date().toLocaleTimeString("ko-KR"); }, 1000);
 </script>
 
-<h2>보유 포트폴리오 (0/4)</h2><div class="card"><table><tr><th>종목</th><th>섹터</th><th>수량</th><th>평단$</th><th>현재가</th><th>손익</th></tr><tr><td colspan='6'>보유 종목 없음 — 다음 리밸런스에서 편입 시도</td></tr></table></div>
-<h2>최근 매매</h2><div class="card"><table><tr><th>시각</th><th>구분</th><th>종목</th><th>수량</th><th>가격</th><th>사유</th></tr><tr><td colspan='6'>아직 기록 없음</td></tr></table></div>
-<div class="k" style="margin:14px 0 30px">모의 계좌 기록입니다 · 열람 전용 (제어는 위 패널 또는 settings.json)</div></div>
+ </div>
+</div>
+<div class="k" style="margin:14px 0 30px">모의 계좌 · 열람/제어 전용 — 실제 주문은 발생하지 않습니다</div>
