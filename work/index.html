@@ -38,7 +38,7 @@ td,th{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left;white-spac
 </style>
 <div class="top"><span class="tt">포트폴리오 로테이션 터미널</span><span class="bdg">US PAPER</span>
 <span class="k">유니버스 24종목 · 11섹터 · Alpaca 실시간 시세</span>
-<span class="k" style="margin-left:auto" id="clk">10-30 06:00 UTC</span></div>
+<span class="k" style="margin-left:auto" id="clk">10-30 13:10 UTC</span></div>
 <div class="grid">
  <div class="colL">
   <h2>회전 · 매매 기록</h2><div class='card'><table><tr><th>시각</th><th>구분</th><th>종목</th><th>가격</th><th>사유</th><th>손익$</th></tr><tr><td colspan='6'>아직 기록 없음 — 장 시작 후 첫 리밸런스에서 매수</td></tr></table></div>
@@ -53,9 +53,9 @@ td,th{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left;white-spac
 <div class='kpi'><div class='k'>현금</div><div class='kv'>$10,000,000</div></div><div class='kpi'><div class='k'>투자중</div><div class='kv'>0%</div></div><div class='kpi'><div class='k'>평가손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>실현손익</div><div class='kv'>$0</div></div>
 <div class='kpi'><div class='k'>최대낙폭</div><div class='kv'>0.0%</div></div><div class='kpi'><div class='k'>리밸런스</div><div class='kv'>0회</div></div><div class='kpi'><div class='k'>매매</div><div class='kv'>0건</div></div><div class='kpi'><div class='k'>승률</div><div class='kv'>—</div></div>
 </div></div>
-  <h2>보유 포트폴리오 (0/4)</h2><div class="card"><table><tr><th>종목</th><th>섹터</th><th>수량</th><th>평단$</th><th>현재가</th><th>손익</th></tr><tr><td colspan='6'>보유 종목 없음 — 다음 리밸런스에서 편입 시도</td></tr></table>
+  <h2>보유 포트폴리오 (0/8)</h2><div class="card"><table><tr><th>종목</th><th>섹터</th><th>수량</th><th>평단$</th><th>현재가</th><th>손익</th></tr><tr><td colspan='6'>보유 종목 없음 — 다음 리밸런스에서 편입 시도</td></tr></table>
 <div class="bar"><i style="width:0%"></i><span>현금 100% / 투자 0%</span></div></div>
-  <div class="status"><div class='k'>봇이 지금 보고 있는 것: 장 마감 — 다음 개장(서울 밤 11:30~12:30) 후 자동 재개 · 마지막 실행 10-30 06:00 UTC</div></div>
+  <div class="status"><div class='k'>봇이 지금 보고 있는 것: 장 마감 — 다음 개장(서울 밤 11:30~12:30) 후 자동 재개 · 마지막 실행 10-30 13:10 UTC</div></div>
   <h2>제어</h2>
 <div class="card" id="ctrl">
  <h3 style="margin:0 0 6px;font-size:13px;color:#F5B942">전략 설정 · 제어</h3>
@@ -65,15 +65,15 @@ td,th{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left;white-spac
   <button onclick="preset('bal')" class="bt2">균형형</button>
   <button onclick="preset('def')" class="bt2">보수형</button>
  </div>
- <label class="lb">동시 보유 종목 수 <b id="v_top" style="color:#F5B942">4</b>개
-  <input type="range" id="c_top" min="2" max="8" step="1" value="4" class="rng"
+ <label class="lb">동시 보유 종목 수 <b id="v_top" style="color:#F5B942">8</b>개
+  <input type="range" id="c_top" min="2" max="8" step="1" value="8" class="rng"
    oninput="document.getElementById('v_top').textContent=this.value"></label>
  <label class="lb">리밸런스 주기(분)
-  <select id="c_rebal" class="in"><option  value='10'>10</option><option  value='15'>15</option><option selected value='20'>20</option><option  value='30'>30</option><option  value='60'>60</option></select></label>
+  <select id="c_rebal" class="in"><option selected value='10'>10</option><option  value='15'>15</option><option  value='20'>20</option><option  value='30'>30</option><option  value='60'>60</option></select></label>
  <div style="display:flex;flex-wrap:wrap;gap:8px">
-  <label class="lb">손절 %<input id="c_stop" type="number" step="1" class="in" style="width:60px" value="8"></label>
-  <label class="lb">익절 %<input id="c_take" type="number" step="1" class="in" style="width:60px" value="8"></label>
-  <label class="lb">트레일링 %<input id="c_trail" type="number" step="1" class="in" style="width:60px" value="5"></label>
+  <label class="lb">손절 %<input id="c_stop" type="number" step="1" class="in" style="width:60px" value="12"></label>
+  <label class="lb">익절 %<input id="c_take" type="number" step="1" class="in" style="width:60px" value="15"></label>
+  <label class="lb">트레일링 %<input id="c_trail" type="number" step="1" class="in" style="width:60px" value="7"></label>
  </div>
  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px">
   <button onclick="setEn(true)" class="bt" style="background:#2FBF71">▶ 시작</button>
