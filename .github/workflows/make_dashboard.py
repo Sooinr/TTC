@@ -205,6 +205,7 @@ CONTROL = """
   <button onclick="saveTok()" class="bt" style="background:#29323E">토큰 저장</button>
  </div>
  <div id="msg" style="margin-top:6px;font-size:12px;color:#F5B942"></div>
+ <div id="tokstat" class="k" style="margin-top:4px"></div>
  <div class="k" style="margin-top:6px">변경은 <b>다음 실행(≤20분)부터 적용</b> · 버튼 없이도 [⚙ 시작·정지·실행] 화면의 선택지(봇 상태·종목 수·주기)로 제어 가능 — 토큰은 여기서 바로 누를 때만 필요</div>
 </div>
 <script>
@@ -267,10 +268,14 @@ async function saveCfg(){
 }
 function ghUrl(){ return "https://github.com/" + OWNER + "/" + REPO + "/actions/workflows/bot.yml"; }
 function runNow(){ location.href = ghUrl(); }
-function saveTok(){ localStorage.setItem("gh_pat", document.getElementById("tok").value.trim()); msg("토큰 저장 완료"); }
+function saveTok(){ localStorage.setItem("gh_pat", document.getElementById("tok").value.trim()); tokStat(); msg("토큰 저장 완료"); }
+function tokStat(){ var t = localStorage.getItem("gh_pat");
+  document.getElementById("tokstat").textContent = t
+    ? "✔ 토큰 저장됨 — 시작·정지·설정 저장·지금 리밸런스 모두 이 페이지에서 클릭 한 번으로 작동"
+    : "토큰 미저장 — 열람만 가능. 시작·정지는 위 [⚙ 시작·정지·실행] 버튼(토큰 불필요), 클릭 제어를 원하면 토큰 저장"; }
 if (!REPO) document.getElementById("ctrl").style.display = "none";
 document.getElementById("ghlink").href = ghUrl();
-else (async function(){ try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
+else (async function(){ tokStat(); try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
        catch (e) { msg("설정 읽기 실패: " + e.message); } })();
 setInterval(function(){ document.getElementById("clk").textContent =
   new Date().toLocaleTimeString("ko-KR"); }, 1000);
