@@ -78,7 +78,7 @@ except Exception:
     MKT_OPEN = False
 
 # ── 계좌 카드 ──
-ACC = f"""<div class="card"><div class="bignum">${fmt(total)}</div>
+ACC = f"""<div class="card"><div class="bignum" id="bignum">${fmt(total)}</div>
 <div class="k">수익률 {fnum(ret, 1, True)} · 시작자산 ${fmt(START_CASH)} · <b style="color:{'#2FBF71' if cfg.get('enabled', True) else '#E5484D'}">봇 {'실행중' if cfg.get('enabled', True) else '정지됨'}</b></div>
 <div class="kgrid">
 {kpi('현금', '$' + fmt(st['cash']))}{kpi('투자중', f'{inv_pct:.0f}%')}{kpi('평가손익', '$' + fmt(upl))}{kpi('실현손익', '$' + fmt(st['realized']))}
@@ -92,8 +92,8 @@ for c, p in st["pos"].items():
     r = (px / p["avg"] - 1) * 100 if px else 0
     col = "#2FBF71" if r >= 0 else "#E5484D"
     rows_pos += (f"<tr><td><b>{c}</b> {esc(NAME.get(c, c))}</td><td>{esc(SEC.get(c, ''))}</td>"
-                 f"<td>{fmt(p['qty'])}</td><td>{p['avg']:.2f}</td><td>{px:.2f}</td>"
-                 f"<td style='color:{col}'>{'▲ +' if r >= 0 else '▼ '}{r:.1f}%</td></tr>")
+                 f"<td>{fmt(p['qty'])}</td><td>{p['avg']:.2f}</td><td id='px_{c}'>{px:.2f}</td>"
+                 f"<td id='pl_{c}' style='color:{col}'>{'▲ +' if r >= 0 else '▼ '}{r:.1f}%</td></tr>")
 rows_pos = rows_pos or "<tr><td colspan='6'>보유 종목 없음 — 다음 리밸런스에서 편입 시도</td></tr>"
 cash_pct = 100 - inv_pct
 HOLD = f"""<div class="card"><table><tr><th>종목</th><th>섹터</th><th>수량</th><th>평단$</th><th>현재가</th><th>손익</th></tr>{rows_pos}</table>
@@ -217,7 +217,14 @@ function b64e(s){ return btoa(unescape(encodeURIComponent(s))); }
 function b64d(s){ return decodeURIComponent(escape(atob(s.replace(/\\n/g, "")))); }
 function hdr(){ var h = { "Accept": "application/vnd.github+json" };
   var t = localStorage.getItem("gh_pat"); if (t) h["Authorization"] = "Bearer " + t; return h; }
-function msg(m){ document.getElementById("msg").textContent = m; }
+function msg(m){ document.getElementById("msg").textContent = m;
+  var t = document.getElementById("toast"); t.textContent = m; t.style.opacity = 1;
+  clearTimeout(window.__tt); window.__tt = setTimeout(function(){ t.style.opacity = 0; }, 4500); }
+function emsg(s){
+  if (s === 401) return "토큰이 만료·폐기됨 — 새 토큰을 넣어 [토큰 저장]";
+  if (s === 403) return "권한 부족 — 토큰의 Contents(읽기/쓰기) 권한 확인";
+  return "HTTP " + s;
+}
 function badge(on){ var b = document.getElementById("badge");
   b.innerHTML = "봇 상태: " + (on ? "실행중" : "정지됨") + ' <span class="k">(변경 시 다음 실행부터)</span>';
   b.style.color = on ? "#2FBF71" : "#E5484D"; }
@@ -232,7 +239,7 @@ async function putCfg(cfg, sha){
   var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/work/settings.json", {
     method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, hdr()),
     body: JSON.stringify({ message: "대시보드에서 설정 변경", content: b64e(JSON.stringify(cfg, null, 2)), sha: sha, branch: "main" }) });
-  if (!r.ok) throw new Error(r.status === 403 ? "권한 없음 — 토큰 Contents 권한 확인" : "HTTP " + r.status);
+  if (!r.ok) throw new Error(emsg(r.status));
 }
 async function updateCfg(mut){
   for (var i = 0; i < 3; i++){
@@ -259,7 +266,7 @@ function preset(k){ fill(P[k]); msg("프리셋 적용됨 — [설정 저장]을 
 async function setEn(on){
   try { await updateCfg(function(c){ c.enabled = on; return c; });
         badge(on); msg(on ? "시작 완료 — 다음 실행부터 매매" : "정지 완료 — 다음 실행부터 매매 안 함"); }
-  catch (e) { msg("토큰 없이는 여기서 바로 적용이 안 됩니다 — 아래 [⚙ 시작·정지·실행] 버튼에서 \'봇 상태\'를 고라 Run 하면 됩니다"); }
+  catch (e) { msg("토큰 없이는 여기서 바로 적용이 안 됩니다 — 아래 [⚙ 시작·정지·실행] 버튼에서 \'봇 상태\'를 고른 뒤 Run 하면 됩니다"); }
 }
 async function saveCfg(){
   try { var c = await updateCfg(function(c0){ var n = fromInputs(); n.enabled = c0.enabled !== false; return n; });
@@ -273,10 +280,13 @@ function tokStat(){ var t = localStorage.getItem("gh_pat");
   document.getElementById("tokstat").textContent = t
     ? "✔ 토큰 저장됨 — 시작·정지·설정 저장·지금 리밸런스 모두 이 페이지에서 클릭 한 번으로 작동"
     : "토큰 미저장 — 열람만 가능. 시작·정지는 위 [⚙ 시작·정지·실행] 버튼(토큰 불필요), 클릭 제어를 원하면 토큰 저장"; }
-if (!REPO) document.getElementById("ctrl").style.display = "none";
-document.getElementById("ghlink").href = ghUrl();
-else (async function(){ tokStat(); try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
-       catch (e) { msg("설정 읽기 실패: " + e.message); } })();
+if (!REPO){
+  document.getElementById("ctrl").style.display = "none";
+} else {
+  document.getElementById("ghlink").href = ghUrl();
+  (async function(){ tokStat(); try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
+    catch (e) { msg("설정 읽기 실패: " + e.message); } })();
+}
 setInterval(function(){ document.getElementById("clk").textContent =
   new Date().toLocaleTimeString("ko-KR"); }, 1000);
 </script>
@@ -287,8 +297,74 @@ STATUS = ("<div class='k'>봇이 지금 보고 있는 것: " +
           ("장중 — 실시간 매매 진행" if MKT_OPEN else "장 마감 — 다음 개장(서울 밤 11:30~12:30) 후 자동 재개") +
           " · 마지막 실행 " + now + "</div>")
 
+LIVE_JS = """
+var CODES = __CODES__;
+var QTY = __QTY__;
+var AVG = __AVG__;
+var CASH = __CASH__;
+var LASTP = __LASTP__;
+var PRX = [
+  function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
+  function(u){ return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
+];
+function chunks(a, n){ var o = []; for (var i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; }
+function fetchChunk(chunk){
+  var y = "https://query1.finance.yahoo.com/v8/finance/spark?symbols=" + chunk.join(",") +
+          "&range=1d&interval=5m&_=" + Date.now();
+  return new Promise(function(res){
+    var i = 0;
+    (function attempt(){
+      if (i >= PRX.length){ res(null); return; }
+      fetch(PRX[i](y)).then(function(r){ return r.ok ? r.text() : Promise.reject(); })
+        .then(function(txt){
+          var j = JSON.parse(txt);
+          var root = j.spark && j.spark.result ? j.spark.result : [];
+          var out = {};
+          root.forEach(function(rr){
+            var m = rr.response && rr.response[0] && rr.response[0].meta;
+            if (m && typeof m.regularMarketPrice === "number") out[m.symbol] = m.regularMarketPrice;
+          });
+          res(out);
+        }).catch(function(){ i++; attempt(); });
+    })();
+  });
+}
+function liveTick(){
+  Promise.all(chunks(CODES, 4).map(fetchChunk)).then(function(rs){
+    var got = {}, n = 0;
+    rs.forEach(function(o){ if (o){ for (var k in o){ got[k] = o[k]; n++; } } });
+    if (!n){ document.getElementById("livestat").textContent = "실시간 연결 실패 — 마지막 봇 실행 값 표시"; return; }
+    document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + n + "종목) · 60초 갱신";
+    var eq = CASH;
+    for (var c in QTY){
+      var p = got[c] || LASTP[c] || 0;
+      if (p) eq += QTY[c] * p;
+      var e1 = document.getElementById("px_" + c), e2 = document.getElementById("pl_" + c);
+      if (e1 && p) e1.textContent = p.toFixed(2);
+      if (e2 && p && AVG[c]){
+        var r = (p / AVG[c] - 1) * 100;
+        e2.textContent = (r >= 0 ? "▲ +" : "▼ ") + r.toFixed(1) + "%";
+        e2.style.color = r >= 0 ? "#2FBF71" : "#E5484D";
+      }
+    }
+    var big = document.getElementById("bignum");
+    if (big) big.textContent = "$" + Math.round(eq).toLocaleString("en-US");
+  }).catch(function(){});
+}
+liveTick(); setInterval(liveTick, 60000);
+"""
+
+codes_all = [a["code"] for a in assets]
+LIVE_JS = (LIVE_JS
+           .replace("__CODES__", json.dumps(codes_all))
+           .replace("__QTY__", json.dumps({c: p["qty"] for c, p in st["pos"].items()}))
+           .replace("__AVG__", json.dumps({c: p["avg"] for c, p in st["pos"].items()}))
+           .replace("__CASH__", repr(round(st["cash"], 2)))
+           .replace("__LASTP__", json.dumps({c: PX[c] for c in PX if c in PX})))
+
 page = f"""<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>로테이션 봇 대시보드</title>
+<meta http-equiv="refresh" content="300">
 <style>
 *{{box-sizing:border-box}}
 body{{font-family:sans-serif;background:#0E1216;color:#E9EDF3;margin:0;padding:10px}}
@@ -324,9 +400,14 @@ td,th{{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left;white-spa
 .bt2{{background:#1D2530;color:#E9EDF3;border:1px solid #29323E;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px}}
 .lb{{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#93A0B0;flex:1;min-width:110px}}
 .rng{{width:100%}}
+.toast{{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#F5B942;color:#0E1216;
+font-weight:700;padding:10px 16px;border-radius:9px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.5);
+z-index:9;opacity:0;transition:opacity .25s;pointer-events:none;max-width:92%}}
 </style>
+<div class="toast" id="toast"></div>
 <div class="top"><span class="tt">포트폴리오 로테이션 터미널</span><span class="bdg">US PAPER</span>
 <span class="k">유니버스 24종목 · 11섹터 · Alpaca 실시간 시세</span>
+<span class="k" id="livestat" style="color:#7FB2F0">● 실시간 가격 연결 중…</span>
 <span class="k" style="margin-left:auto" id="clk">{now}</span></div>
 <div class="grid">
  <div class="colL">
@@ -342,6 +423,7 @@ td,th{{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left;white-spa
   <h2>제어</h2>{CONTROL.replace('__BC__', '#2FBF71' if cfg.get('enabled', True) else '#E5484D').replace('__BT__', '실행중' if cfg.get('enabled', True) else '정지됨').replace('__VTOP__', str(v_top)).replace('__OREB__', opts([10, 15, 20, 30, 60], v_reb)).replace('__VST__', str(v_stop)).replace('__VTK__', str(v_take)).replace('__VTR__', str(v_trail))}
  </div>
 </div>
+<script>{LIVE_JS}</script>
 <div class="k" style="margin:14px 0 30px">모의 계좌 · 열람/제어 전용 — 실제 주문은 발생하지 않습니다</div>"""
 
 with open(os.path.join(HERE, "index.html"), "w", encoding="utf-8") as f:
