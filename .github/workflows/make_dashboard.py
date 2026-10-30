@@ -125,6 +125,13 @@ async function putCfg(cfg, sha){
     body: JSON.stringify({ message: "대시보드에서 설정 변경", content: b64e(JSON.stringify(cfg, null, 2)), sha: sha, branch: "main" }) });
   if (!r.ok) throw new Error(r.status === 403 ? "권한 없음 — 토큰의 Contents 권한 확인" : "HTTP " + r.status);
 }
+async function updateCfg(mut){
+  for (var i = 0; i < 3; i++){
+    var g = await getCfg();
+    try { var next = mut(g.cfg); await putCfg(next, g.sha); return next; }
+    catch (e) { if (String(e.message).indexOf("409") < 0) throw e; }
+  }
+}
 function fromInputs(){
   return { enabled: null, top_n: +document.getElementById("c_top").value,
            rebal_min: +document.getElementById("c_rebal").value,
@@ -140,13 +147,13 @@ function fill(c){
   if (c.trail != null) document.getElementById("c_trail").value = Math.round(c.trail * 100);
 }
 async function setEn(on){
-  try { var g = await getCfg(); g.cfg.enabled = on; await putCfg(g.cfg, g.sha);
+  try { await updateCfg(function(c){ c.enabled = on; return c; });
         badge(on); msg(on ? "시작 요청 완료 — 다음 실행부터 매매 재개" : "정지 요청 완료 — 다음 실행부터 매매 안 함"); }
   catch (e) { msg("실패: " + e.message); }
 }
 async function saveCfg(){
-  try { var g = await getCfg(); var c = fromInputs(); c.enabled = g.cfg.enabled !== false;
-        await putCfg(c, g.sha); fill(c); msg("설정 저장 완료 — 다음 실행부터 적용"); }
+  try { var c = await updateCfg(function(c0){ var n = fromInputs(); n.enabled = c0.enabled !== false; return n; });
+        fill(c); msg("설정 저장 완료 — 다음 실행부터 적용"); }
   catch (e) { msg("실패: " + e.message); }
 }
 async function runNow(){
