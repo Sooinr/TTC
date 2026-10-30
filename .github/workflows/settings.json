@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "top_n": 4,
+  "rebal_min": 20,
+  "stop": -0.08,
+  "take": 0.08,
+  "trail": 0.05
+}
