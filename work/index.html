@@ -9,11 +9,103 @@ td,th{padding:5px 6px;border-bottom:1px solid #29323E;text-align:left}
 .kpi{flex:1;min-width:120px;background:#161C24;border:1px solid #29323E;border-radius:8px;padding:8px 10px}
 .kv{font-size:15px;font-weight:700;margin-top:2px}
 .card{background:#161C24;border:1px solid #29323E;border-radius:10px;padding:10px;margin-top:8px}
-.cards{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}</style><div class="wrap">
+.cards{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.in{background:#1D2530;color:#E9EDF3;border:1px solid #29323E;border-radius:6px;padding:4px 6px}
+.bt{color:#fff;border:0;border-radius:7px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px}</style><div class="wrap">
 <h2 style="margin-top:0">로테이션 봇 대시보드</h2>
-<div class="k">마지막 실행: 2026-10-30 02:49 UTC · 20분마다 자동 갱신 · 미국 정규장(뉴욕 09:30~16:00)에만 매매</div>
+<div class="k">마지막 실행: 2026-10-30 03:03 UTC · 20분마다 자동 실행 · 미국 정규장(뉴욕 09:30~16:00)에만 매매 · <a href="#" onclick="location.reload();return false" style="color:#7FB2F0">새로고침</a></div>
 <div class="big">$10,000,000</div><div class="k">수익률 +0.0% · 시작자본 $10,000,000</div>
 <div class="cards"><div class='kpi'><div class='k'>현금</div><div class='kv'>$10,000,000</div></div><div class='kpi'><div class='k'>투자중</div><div class='kv'>0%</div></div><div class='kpi'><div class='k'>평가손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>실현손익</div><div class='kv'>$0</div></div><div class='kpi'><div class='k'>리밸런스</div><div class='kv'>0회</div></div><div class='kpi'><div class='k'>매매</div><div class='kv'>0건</div></div><div class='kpi'><div class='k'>승률</div><div class='kv'>0%</div></div></div>
+
+<div class="card" id="ctrl">
+ <h3 style="margin:0 0 6px;font-size:13px;color:#F5B942">제어 패널</h3>
+ <div id="badge" style="font-size:14px;font-weight:700;color:#2FBF71">봇 상태: 실행중 <span class="k">(페이지를 연 시점 기준 · 아래 버튼으로 변경)</span></div>
+ <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+  <button onclick="setEn(true)"  class="bt" style="background:#2FBF71">▶ 시작</button>
+  <button onclick="setEn(false)" class="bt" style="background:#E5484D">■ 정지</button>
+  <button onclick="saveCfg()"    class="bt" style="background:#F5B942;color:#0E1216">설정 저장</button>
+  <button onclick="runNow()"     class="bt" style="background:#3E76D6">지금 리밸런스</button>
+ </div>
+ <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:12px">
+  <label>보유 종목 수 <select id="c_top" class="in"><option  value='2'>2</option><option  value='3'>3</option><option selected value='4'>4</option><option  value='5'>5</option><option  value='6'>6</option><option  value='7'>7</option><option  value='8'>8</option></select></label>
+  <label>리밸런스 주기(분) <select id="c_rebal" class="in"><option  value='10'>10</option><option  value='15'>15</option><option selected value='20'>20</option><option  value='30'>30</option><option  value='60'>60</option></select></label>
+  <label>손절 % <input id="c_stop" type="number" step="1" class="in" style="width:64px" value="8"></label>
+  <label>익절 % <input id="c_take" type="number" step="1" class="in" style="width:64px" value="8"></label>
+  <label>트레일링 % <input id="c_trail" type="number" step="1" class="in" style="width:64px" value="5"></label>
+ </div>
+ <div style="margin-top:8px;font-size:12px">
+  <input id="tok" class="in" style="width:270px" placeholder="GitHub 토큰 — 한 번만 넣으면 저장됨">
+  <button onclick="saveTok()" class="bt" style="background:#29323E">토큰 저장</button>
+ </div>
+ <div id="msg" style="margin-top:6px;font-size:12px;color:#F5B942"></div>
+ <div class="k" style="margin-top:6px">변경은 <b>다음 실행(최대 20분 내)부터 적용</b>됩니다. 토큰: GitHub → Settings → Developer settings →
+ Fine-grained tokens → 이 저장소만 지정, 권한 Contents: Read and write(시작/정지·설정) + Actions: Read and write(지금 리밸런스).
+ 토큰은 이 브라우저에만 저장되며 언제든 폐기할 수 있습니다.</div>
+</div>
+<script>
+var OWNER = location.hostname.split(".")[0], REPO = (location.pathname.split("/")[1] || "");
+function b64e(s){ return btoa(unescape(encodeURIComponent(s))); }
+function b64d(s){ return decodeURIComponent(escape(atob(s.replace(/\n/g, "")))); }
+function hdr(){ var t = localStorage.getItem("gh_pat") || "";
+  var h = { "Accept": "application/vnd.github+json" };
+  if (t) h["Authorization"] = "Bearer " + t;
+  return h; }
+function msg(m){ document.getElementById("msg").textContent = m; }
+function badge(on){ var b = document.getElementById("badge");
+  b.innerHTML = "봇 상태: " + (on ? "실행중" : "정지됨") + ' <span class="k">(변경 시 다음 실행부터 적용)</span>';
+  b.style.color = on ? "#2FBF71" : "#E5484D"; }
+async function getCfg(){
+  var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/settings.json", { headers: hdr() });
+  if (r.status === 404) return { sha: null, cfg: {} };
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  var j = await r.json();
+  return { sha: j.sha, cfg: JSON.parse(b64d(j.content)) };
+}
+async function putCfg(cfg, sha){
+  var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/settings.json", {
+    method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, hdr()),
+    body: JSON.stringify({ message: "대시보드에서 설정 변경", content: b64e(JSON.stringify(cfg, null, 2)), sha: sha, branch: "main" }) });
+  if (!r.ok) throw new Error(r.status === 403 ? "권한 없음 — 토큰의 Contents 권한 확인" : "HTTP " + r.status);
+}
+function fromInputs(){
+  return { enabled: null, top_n: +document.getElementById("c_top").value,
+           rebal_min: +document.getElementById("c_rebal").value,
+           stop: -Math.abs(+document.getElementById("c_stop").value) / 100,
+           take: Math.abs(+document.getElementById("c_take").value) / 100,
+           trail: Math.abs(+document.getElementById("c_trail").value) / 100 };
+}
+function fill(c){
+  if (c.top_n) document.getElementById("c_top").value = c.top_n;
+  if (c.rebal_min) document.getElementById("c_rebal").value = c.rebal_min;
+  if (c.stop != null) document.getElementById("c_stop").value = Math.round(Math.abs(c.stop) * 100);
+  if (c.take != null) document.getElementById("c_take").value = Math.round(c.take * 100);
+  if (c.trail != null) document.getElementById("c_trail").value = Math.round(c.trail * 100);
+}
+async function setEn(on){
+  try { var g = await getCfg(); g.cfg.enabled = on; await putCfg(g.cfg, g.sha);
+        badge(on); msg(on ? "시작 요청 완료 — 다음 실행부터 매매 재개" : "정지 요청 완료 — 다음 실행부터 매매 안 함"); }
+  catch (e) { msg("실패: " + e.message); }
+}
+async function saveCfg(){
+  try { var g = await getCfg(); var c = fromInputs(); c.enabled = g.cfg.enabled !== false;
+        await putCfg(c, g.sha); fill(c); msg("설정 저장 완료 — 다음 실행부터 적용"); }
+  catch (e) { msg("실패: " + e.message); }
+}
+async function runNow(){
+  try { var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO +
+        "/actions/workflows/bot.yml/dispatches", { method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, hdr()),
+        body: JSON.stringify({ ref: "main" }) });
+    if (!r.ok) throw new Error(r.status === 403 ? "토큰에 Actions 권한 필요" : "HTTP " + r.status);
+    msg("실행 요청 완료 — Actions 탭에서 진행 확인");
+  } catch (e) { msg("실패: " + e.message); }
+}
+function saveTok(){ localStorage.setItem("gh_pat", document.getElementById("tok").value.trim()); msg("토큰 저장 완료"); }
+if (!REPO) { document.getElementById("ctrl").style.display = "none"; }
+else { (async function(){ try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
+        catch (e) { msg("설정 읽기 실패: " + e.message); } })(); }
+</script>
+
 <h2>보유 포트폴리오 (0/4)</h2><div class="card"><table><tr><th>종목</th><th>섹터</th><th>수량</th><th>평단$</th><th>현재가</th><th>손익</th></tr><tr><td colspan='6'>보유 종목 없음 — 다음 리밸런스에서 편입 시도</td></tr></table></div>
 <h2>최근 매매</h2><div class="card"><table><tr><th>시각</th><th>구분</th><th>종목</th><th>수량</th><th>가격</th><th>사유</th></tr><tr><td colspan='6'>아직 기록 없음</td></tr></table></div>
-<div class="k" style="margin:14px 0 30px">모의 계좌 기록입니다 · 열람 전용</div></div>
+<div class="k" style="margin:14px 0 30px">모의 계좌 기록입니다 · 열람 전용 (제어는 위 패널 또는 settings.json)</div></div>
