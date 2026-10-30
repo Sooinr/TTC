@@ -422,13 +422,18 @@ def main():
     print(f"[시작] 유니버스 {len(codes)}종목 · 보유 {top_n} · {rebal}분 리밸런스 · "
           f"{a.poll}초 갱신 — 장중에만 매매합니다")
     while True:
-        if market_open_now():
-            prices = get_prices(codes, a)
-            if prices:
-                run_cycle(st, prices, top_n, rebal, stop_l, take_l, trail_l)
-        else:
-            print(f"[{datetime.now():%H:%M}] 장 마감 — 대기 중")
-            save_state(st)
+        try:
+            if market_open_now():
+                prices = get_prices(codes, a)
+                if prices:
+                    run_cycle(st, prices, top_n, rebal, stop_l, take_l, trail_l)
+            else:
+                print(f"[{datetime.now():%H:%M}] 장 마감 — 대기 중")
+                save_state(st)
+        except Exception:
+            import traceback
+            print("[오류] 이 사이클 실패 — 원인을 남기고 계속 진행합니다")
+            traceback.print_exc()
         if a.once:
             return
         time.sleep(a.poll if market_open_now() else 300)
