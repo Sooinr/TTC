@@ -304,8 +304,10 @@ var AVG = __AVG__;
 var CASH = __CASH__;
 var LASTP = __LASTP__;
 var PRX = [
-  function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
-  function(u){ return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
+  { mk:function(u){ return u; }, parse:function(t){ return JSON.parse(t); } },
+  { mk:function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); }, parse:function(t){ return JSON.parse(t); } },
+  { mk:function(u){ return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }, parse:function(t){ return JSON.parse(t); } },
+  { mk:function(u){ return "https://api.allorigins.win/get?url=" + encodeURIComponent(u); }, parse:function(t){ return JSON.parse(JSON.parse(t).contents); } }
 ];
 function chunks(a, n){ var o = []; for (var i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; }
 function fetchChunk(chunk){
@@ -315,9 +317,9 @@ function fetchChunk(chunk){
     var i = 0;
     (function attempt(){
       if (i >= PRX.length){ res(null); return; }
-      fetch(PRX[i](y)).then(function(r){ return r.ok ? r.text() : Promise.reject(); })
+      fetch(PRX[i].mk(y)).then(function(r){ return r.ok ? r.text() : Promise.reject(); })
         .then(function(txt){
-          var j = JSON.parse(txt);
+          var j = PRX[i].parse(txt);
           var root = j.spark && j.spark.result ? j.spark.result : [];
           var out = {};
           root.forEach(function(rr){
