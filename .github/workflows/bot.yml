@@ -125,7 +125,7 @@ jobs:
           git config user.name "rotation-bot"
           git config user.email "actions@users.noreply.github.com"
           git rm --cached work/server_bot.py work/universe_us.json work/make_dashboard.py 2>/dev/null || true
-          for f in state.json trades.csv index.html settings.json; do
+          for f in state.json trades.csv index.html settings.json quotes.json; do
             git add "work/$f" 2>/dev/null || true
           done
           if ! git diff --cached --quiet; then
