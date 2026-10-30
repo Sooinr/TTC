@@ -14,11 +14,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+
+      - name: 저장소 파일 점검
+        run: |
+          ls -la
+          if [ ! -f server_bot.py ] || [ ! -f universe_us.json ]; then
+            echo "::error::server_bot.py 또는 universe_us.json이 저장소 맨 위에 없습니다. Code 탭에서 파일들이 폴더 없이 바로 보이는지 확인하고, 키트 파일들을 루트에 다시 업로드하세요."
+            exit 1
+          fi
 
       - name: 봇 1회 실행 (추가 설치 없음 — 표준 라이브러리만 사용)
         run: python3 server_bot.py --once
