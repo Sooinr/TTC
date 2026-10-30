@@ -382,17 +382,17 @@ function liveTick(){
     var live = res[0], bq = res[1];
     if (live.n){
       applyVals(live.got);
-      document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + live.n + "종목) · 60초 갱신";
+      document.getElementById("livestat").innerHTML = "● 실시간 가격 연결(" + live.n + "종목) · 30초 갱신";
     } else if (bq && bq.prices){
       applyVals(bq.prices);
       document.getElementById("livestat").innerHTML =
-        "● 봇 최신 시세 — " + agoMin(bq.time) + "분 전 갱신 (10분 주기) <span class='k'>| 실시간 경로 재시도중</span>";
+        "● 봇 최신 시세 — " + agoMin(bq.time) + "분 전 갱신 (5분 주기) <span class='k'>| 실시간 경로 재시도중</span>";
     } else {
       document.getElementById("livestat").textContent = "연결 대기중 — 다음 갱신에서 재시도합니다";
     }
   }).catch(function(){});
 }
-liveTick(); setInterval(liveTick, 60000);
+liveTick(); setInterval(liveTick, 30000);
 """
 
 codes_all = [a["code"] for a in assets]
