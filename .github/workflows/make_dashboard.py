@@ -198,13 +198,14 @@ CONTROL = """
   <button onclick="setEn(false)" class="bt" style="background:#E5484D">■ 정지</button>
   <button onclick="saveCfg()" class="bt" style="background:#F5B942;color:#0E1216">설정 저장</button>
   <button onclick="runNow()" class="bt" style="background:#3E76D6">지금 리밸런스</button>
+  <a id="ghlink" class="bt" style="background:#29323E;text-decoration:none" href="#">⚙ 시작·정지·실행 (토큰 불필요)</a>
  </div>
  <div style="margin-top:6px;font-size:12px">
   <input id="tok" class="in" style="width:100%;max-width:260px" placeholder="GitHub 토큰">
   <button onclick="saveTok()" class="bt" style="background:#29323E">토큰 저장</button>
  </div>
  <div id="msg" style="margin-top:6px;font-size:12px;color:#F5B942"></div>
- <div class="k" style="margin-top:6px">변경은 <b>다음 실행(≤20분)부터 적용</b> · 토큰은 브라우저에만 저장</div>
+ <div class="k" style="margin-top:6px">변경은 <b>다음 실행(≤20분)부터 적용</b> · 버튼 없이도 [⚙ 시작·정지·실행] 화면의 선택지(봇 상태·종목 수·주기)로 제어 가능 — 토큰은 여기서 바로 누를 때만 필요</div>
 </div>
 <script>
 var OWNER = location.hostname.split(".")[0], REPO = (location.pathname.split("/")[1] || "");
@@ -220,14 +221,14 @@ function badge(on){ var b = document.getElementById("badge");
   b.innerHTML = "봇 상태: " + (on ? "실행중" : "정지됨") + ' <span class="k">(변경 시 다음 실행부터)</span>';
   b.style.color = on ? "#2FBF71" : "#E5484D"; }
 async function getCfg(){
-  var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/settings.json", { headers: hdr() });
+  var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/work/settings.json", { headers: hdr() });
   if (r.status === 404) return { sha: null, cfg: {} };
   if (!r.ok) throw new Error("HTTP " + r.status);
   var j = await r.json();
   return { sha: j.sha, cfg: JSON.parse(b64d(j.content)) };
 }
 async function putCfg(cfg, sha){
-  var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/settings.json", {
+  var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/work/settings.json", {
     method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, hdr()),
     body: JSON.stringify({ message: "대시보드에서 설정 변경", content: b64e(JSON.stringify(cfg, null, 2)), sha: sha, branch: "main" }) });
   if (!r.ok) throw new Error(r.status === 403 ? "권한 없음 — 토큰 Contents 권한 확인" : "HTTP " + r.status);
@@ -257,22 +258,18 @@ function preset(k){ fill(P[k]); msg("프리셋 적용됨 — [설정 저장]을 
 async function setEn(on){
   try { await updateCfg(function(c){ c.enabled = on; return c; });
         badge(on); msg(on ? "시작 완료 — 다음 실행부터 매매" : "정지 완료 — 다음 실행부터 매매 안 함"); }
-  catch (e) { msg("실패: " + e.message); }
+  catch (e) { msg("토큰 없이는 여기서 바로 적용이 안 됩니다 — 아래 [⚙ 시작·정지·실행] 버튼에서 \'봇 상태\'를 고라 Run 하면 됩니다"); }
 }
 async function saveCfg(){
   try { var c = await updateCfg(function(c0){ var n = fromInputs(); n.enabled = c0.enabled !== false; return n; });
         fill(c); msg("설정 저장 완료 — 다음 실행부터 적용"); }
   catch (e) { msg("실패: " + e.message); }
 }
-async function runNow(){
-  try { var r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/actions/workflows/bot.yml/dispatches",
-        { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, hdr()), body: JSON.stringify({ ref: "main" }) });
-    if (!r.ok) throw new Error(r.status === 403 ? "토큰에 Actions 권한 필요" : "HTTP " + r.status);
-    msg("실행 요청 완료 — Actions 탭에서 확인");
-  } catch (e) { msg("실패: " + e.message); }
-}
+function ghUrl(){ return "https://github.com/" + OWNER + "/" + REPO + "/actions/workflows/bot.yml"; }
+function runNow(){ location.href = ghUrl(); }
 function saveTok(){ localStorage.setItem("gh_pat", document.getElementById("tok").value.trim()); msg("토큰 저장 완료"); }
 if (!REPO) document.getElementById("ctrl").style.display = "none";
+document.getElementById("ghlink").href = ghUrl();
 else (async function(){ try { var g = await getCfg(); fill(g.cfg); badge(g.cfg.enabled !== false); }
        catch (e) { msg("설정 읽기 실패: " + e.message); } })();
 setInterval(function(){ document.getElementById("clk").textContent =
