@@ -232,6 +232,9 @@ def run_cycle(st, prices, top_n=4, rebal_min=60, stop=-0.08, take=0.08, trail=0.
         if st["flex_swaps"] < 2:
             flex_rotate(st, prices, top_n)
 
+    eh = st.setdefault("equity_hist", [])
+    eh.append([int(now), round(equity(st, prices))])
+    del eh[:-240]                      # 자산 곡선용 — 최근 240틱만 유지
     save_state(st)
 
 
