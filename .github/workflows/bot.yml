@@ -3,7 +3,7 @@ name: rotation-bot
 # 20분마다 자동 실행 + Run workflow 폼에서 시작/정지·설정 (개인 토큰 불필요)
 on:
   schedule:
-    - cron: "*/5 * * * *"           # 5분마다 — 공개 저장소는 실행 시간 무제한 무료
+    - cron: "*/1 * * * *"           # 1분마다 — 공개 저장소는 실행 시간 무제한 무료 (깃허브 상황에 따라 수분 지연 가능)
   workflow_dispatch:
     inputs:
       enabled:
